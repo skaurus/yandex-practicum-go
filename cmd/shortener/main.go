@@ -10,7 +10,7 @@ import (
 
 func main() {
 	var shorts map[int][]byte
-	var counter int = 0
+	var counter = 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -22,6 +22,7 @@ func main() {
 			}
 			counter++
 			shorts[counter] = url
+			w.WriteHeader(http.StatusCreated)
 			w.Write([]byte(strconv.Itoa(counter)))
 		case r.Method == http.MethodGet:
 			match, err := regexp.MatchString(`^/[0-9]+$`, r.URL.Path)
@@ -39,7 +40,9 @@ func main() {
 				http.Error(w, "wrong id", 400)
 				return
 			}
-			w.Write(url)
+			w.Header().Set("Location", string(url))
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			w.Write([]byte(""))
 		default:
 			http.Error(w, "no handler defined", 400)
 		}
