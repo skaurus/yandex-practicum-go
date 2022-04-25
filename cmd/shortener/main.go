@@ -23,7 +23,7 @@ func main() {
 			counter++
 			shorts[counter] = url
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(strconv.Itoa(counter)))
+			w.Write([]byte("http://localhost:8080/" + strconv.Itoa(counter)))
 		case r.Method == http.MethodGet:
 			match, err := regexp.MatchString(`^/[0-9]+$`, r.URL.Path)
 			if err != nil || !match {
