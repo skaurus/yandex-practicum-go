@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	var shorts map[int][]byte
-	var counter = 0
+	shorts := make(map[int][]byte)
+	counter := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
