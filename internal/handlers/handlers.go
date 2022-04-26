@@ -23,9 +23,9 @@ func CreateHandler(store storage.Storage) func(w http.ResponseWriter, r *http.Re
 				http.Error(w, "empty url", 400)
 				return
 			}
-			newId := store.Shorten(string(url))
+			newID := store.Shorten(string(url))
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("http://localhost:8080/" + strconv.Itoa(newId)))
+			w.Write([]byte("http://localhost:8080/" + strconv.Itoa(newID)))
 		case r.Method == http.MethodGet:
 			match, err := regexp.MatchString(`^/[0-9]+$`, r.URL.Path)
 			if err != nil || !match {
