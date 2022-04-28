@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-	app.Serve()
+	router := app.SetupRouter()
+	router.Run()
 }

@@ -1,52 +1,42 @@
 package handlers
 
 import (
+	"github.com/gin-gonic/gin"
+	"github.com/skaurus/yandex-practicum-go/internal/storage"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
-
-	"github.com/skaurus/yandex-practicum-go/internal/storage"
 )
 
-func CreateHandler(store storage.Storage) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/" && r.Method == http.MethodPost:
-			url, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), 400)
-				return
-			}
-			if len(url) == 0 {
-				http.Error(w, "empty url", 400)
-				return
-			}
-			newID := store.Shorten(string(url))
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("http://localhost:8080/" + strconv.Itoa(newID)))
-		case r.Method == http.MethodGet:
-			match, err := regexp.MatchString(`^/[0-9]+$`, r.URL.Path)
-			if err != nil || !match {
-				http.Error(w, "wrong url", 400)
-				return
-			}
-			id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/"))
-			if err != nil {
-				http.Error(w, "can't parse id", 400)
-				return
-			}
-			url, ok := store.Unshorten(id)
-			if !ok {
-				http.Error(w, "wrong id", 400)
-				return
-			}
-			w.Header().Set("Location", url)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			w.Write([]byte(""))
-		default:
-			http.Error(w, "no handler defined", 400)
-		}
+func Post(c *gin.Context) {
+	storage := c.MustGet("storage").(storage.Storage)
+
+	url, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
 	}
+	if len(url) == 0 {
+		c.String(http.StatusBadRequest, "empty url")
+		return
+	}
+	newID := storage.Shorten(string(url))
+	c.String(http.StatusCreated, "http://localhost:8080/%d", newID)
+}
+
+func Get(c *gin.Context) {
+	storage := c.MustGet("storage").(storage.Storage)
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "wrong id")
+		return
+	}
+	url, ok := storage.Unshorten(id)
+	if !ok {
+		c.String(http.StatusBadRequest, "wrong id")
+		return
+	}
+	c.Header("Location", url)
+	c.String(http.StatusTemporaryRedirect, "")
 }

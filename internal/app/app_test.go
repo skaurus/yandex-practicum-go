@@ -1,8 +1,7 @@
-package handlers
+package app
 
 import (
 	"bytes"
-	"github.com/skaurus/yandex-practicum-go/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -15,11 +14,8 @@ const (
 	Google = "https://google.com"
 )
 
-func TestCreateHandler(t *testing.T) {
-	storage := storage.New(storage.Memory)
-	//storage.Shorten(YA)
-	//storage.Shorten(Google)
-	handler := CreateHandler(storage)
+func TestRoutes(t *testing.T) {
+	router := SetupRouter()
 
 	type want struct {
 		code           int
@@ -64,18 +60,18 @@ func TestCreateHandler(t *testing.T) {
 			body:   "",
 			want: want{
 				code:        400,
-				body:        "empty url\n",
+				body:        "empty url",
 				contentType: "text/plain",
 			},
 		},
 		{
 			name:   "negative test #2",
 			url:    "/search",
-			method: http.MethodPost,
+			method: http.MethodGet,
 			body:   "",
 			want: want{
 				code:        400,
-				body:        "no handler defined\n",
+				body:        "wrong id",
 				contentType: "text/plain",
 			},
 		},
@@ -110,7 +106,7 @@ func TestCreateHandler(t *testing.T) {
 			body:   "",
 			want: want{
 				code:           400,
-				body:           "wrong id\n",
+				body:           "wrong id",
 				contentType:    "text/plain",
 				locationHeader: "",
 			},
@@ -122,10 +118,8 @@ func TestCreateHandler(t *testing.T) {
 
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			// определяем хендлер
-			h := http.HandlerFunc(handler)
 			// запускаем сервер
-			h.ServeHTTP(w, request)
+			router.ServeHTTP(w, request)
 			res := w.Result()
 
 			defer res.Body.Close()
