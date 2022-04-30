@@ -1,12 +1,13 @@
 package app
 
 import (
-	"github.com/gin-gonic/gin"
 	"io"
 	"os"
 
 	"github.com/skaurus/yandex-practicum-go/internal/handlers"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
+
+	"github.com/gin-gonic/gin"
 )
 
 func AddStore() gin.HandlerFunc {
