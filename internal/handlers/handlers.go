@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,11 +10,11 @@ import (
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
+	//jsoniter "github.com/json-iterator/go"
 )
 
 const (
-	ErrEmptyUrl = "empty url"
+	ErrEmptyURL = "empty url"
 )
 
 func BodyShorten(c *gin.Context) {
@@ -25,7 +26,7 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 	if len(url) == 0 {
-		c.String(http.StatusBadRequest, ErrEmptyUrl)
+		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
@@ -33,33 +34,34 @@ func BodyShorten(c *gin.Context) {
 	c.String(http.StatusCreated, "http://localhost:8080/%d", newID)
 }
 
-type ApiRequest struct {
-	Url string `json:"url"`
+type APIRequest struct {
+	URL string `json:"url"`
 }
 
-func ApiShorten(c *gin.Context) {
+func APIShorten(c *gin.Context) {
 	storage := c.MustGet("storage").(storage.Storage)
 
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	// с использованием этой библиотеки не проходили тесты Практикума
+	//var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	var data ApiRequest
+	var data APIRequest
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		c.String(http.StatusBadRequest, "can't parse json")
 		return
 	}
-	if len(data.Url) == 0 {
-		c.String(http.StatusBadRequest, ErrEmptyUrl)
+	if len(data.URL) == 0 {
+		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
-	shortenedUrl := fmt.Sprintf("http://localhost:8080/%d", storage.Shorten(data.Url))
-	c.PureJSON(http.StatusCreated, gin.H{"result": shortenedUrl})
+	shortenedURL := fmt.Sprintf("http://localhost:8080/%d", storage.Shorten(data.Url))
+	c.PureJSON(http.StatusCreated, gin.H{"result": shortenedURL})
 }
 
 func Get(c *gin.Context) {
