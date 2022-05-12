@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -105,10 +106,42 @@ func TestRoutes(t *testing.T) {
 			method: http.MethodGet,
 			body:   "",
 			want: want{
-				code:           400,
-				body:           "wrong id",
-				contentType:    "text/plain",
-				locationHeader: "",
+				code:        400,
+				body:        "wrong id",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "api positive test #1",
+			url:    "/api/shorten",
+			method: http.MethodPost,
+			body:   fmt.Sprintf(`{"url":"%s"}`, YA),
+			want: want{
+				code:        201,
+				body:        `{"result":"http://localhost:8080/3"}`,
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "api negative test #1",
+			url:    "/api/shorten",
+			method: http.MethodPost,
+			body:   YA,
+			want: want{
+				code:        400,
+				body:        "can't parse json",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "api negative test #2",
+			url:    "/api/shorten",
+			method: http.MethodPost,
+			body:   fmt.Sprintf(`{"url":"%s"}`, ""),
+			want: want{
+				code:        400,
+				body:        "empty url",
+				contentType: "text/plain",
 			},
 		},
 	}

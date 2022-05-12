@@ -27,8 +27,9 @@ func SetupRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(AddStore())
 
-	router.POST("/", handlers.Post)
+	router.POST("/", handlers.BodyShorten)
 	router.GET("/:id", handlers.Get)
+	router.POST("/api/shorten", handlers.ApiShorten)
 
 	return router
 }
