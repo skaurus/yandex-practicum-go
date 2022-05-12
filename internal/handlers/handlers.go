@@ -60,7 +60,7 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	shortenedURL := fmt.Sprintf("http://localhost:8080/%d", storage.Shorten(data.Url))
+	shortenedURL := fmt.Sprintf("http://localhost:8080/%d", storage.Shorten(data.URL))
 	c.PureJSON(http.StatusCreated, gin.H{"result": shortenedURL})
 }
 
