@@ -7,8 +7,8 @@ import (
 
 type Config struct {
 	ServerAddr string `env:"SERVER_ADDR"`
-	BaseAddr   string `env:"BASE_ADDR"`
 	LogName    string `env:"LOG_NAME"`
+	BaseAddr   string `env:"BASE_ADDR"`
 	BaseURI    *url.URL
 }
 
@@ -19,6 +19,9 @@ func ParseConfig() *Config {
 		panic(err)
 	}
 
+	if len(config.ServerAddr) == 0 {
+		config.ServerAddr = "localhost:8080"
+	}
 	if len(config.LogName) == 0 {
 		config.LogName = "app.log"
 	}
