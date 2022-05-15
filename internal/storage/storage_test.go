@@ -23,8 +23,8 @@ func Test_memoryStorage_Shorten(t *testing.T) {
 		args   args
 		want   int
 	}{
-		{"can shorten url", fields{Ptr[int](0), make(map[int]string)}, args{YA}, 1},
-		{"can shorten new url", fields{Ptr[int](1), map[int]string{1: YA}}, args{YA}, 2},
+		{"can shorten url", fields{IntPtr(0), make(map[int]string)}, args{YA}, 1},
+		{"can shorten new url", fields{IntPtr(1), map[int]string{1: YA}}, args{YA}, 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,9 +54,9 @@ func Test_memoryStorage_Unshorten(t *testing.T) {
 		want   string
 		want1  bool
 	}{
-		{"can unshorten url", fields{Ptr[int](2), map[int]string{1: YA, 2: Google}}, args{1}, YA, true},
-		{"can unshorten url", fields{Ptr[int](2), map[int]string{1: YA, 2: Google}}, args{2}, Google, true},
-		{"can't unshorten what is not there", fields{Ptr[int](2), map[int]string{1: YA, 2: Google}}, args{3}, "", false},
+		{"can unshorten url", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{1}, YA, true},
+		{"can unshorten url", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{2}, Google, true},
+		{"can't unshorten what is not there", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{3}, "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
