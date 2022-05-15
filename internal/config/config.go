@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	ServerAddr string `env:"SERVER_ADDR"`
+	ServerAddr string `env:"SERVER_ADDRESS"`
 	LogName    string `env:"LOG_NAME"`
 	BaseAddr   string `env:"BASE_ADDR"`
 	BaseURI    *url.URL
