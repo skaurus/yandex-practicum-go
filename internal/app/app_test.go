@@ -7,7 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+
+	"github.com/skaurus/yandex-practicum-go/internal/config"
+	"github.com/skaurus/yandex-practicum-go/internal/storage"
 )
 
 const (
@@ -16,7 +20,16 @@ const (
 )
 
 func TestRoutes(t *testing.T) {
-	router := SetupRouter()
+	storage := storage.New(storage.Memory)
+	config := config.ParseConfig()
+	router := SetupRouter(&storage, config)
+
+	configWithAnotherBase := *config
+	configWithAnotherBase.BaseAddr = "https://ya.us/s/" // yet another url shortener
+	configWithAnotherBase.BaseURI, _ = url.Parse(configWithAnotherBase.BaseAddr)
+
+	routerWithAnotherBase := SetupRouter(&storage, &configWithAnotherBase)
+	originalRouter := router
 
 	type want struct {
 		code           int
@@ -25,60 +38,32 @@ func TestRoutes(t *testing.T) {
 		locationHeader string
 	}
 
+	counter := 0
+	inc := func(i *int) int { *i++; return *i }
+
 	tests := []struct {
 		name   string
 		url    string
 		method string
 		body   string
+		pre    func()
+		post   func()
 		want   want
 	}{
 		{
-			name:   "positive test #1",
+			name:   "shorting YA via body POST",
 			url:    "/",
 			method: http.MethodPost,
 			body:   YA,
 			want: want{
 				code:        201,
-				body:        "http://localhost:8080/1",
+				body:        fmt.Sprintf("http://localhost:8080/%d", inc(&counter)),
 				contentType: "text/plain",
 			},
 		},
 		{
-			name:   "positive test #2",
-			url:    "/",
-			method: http.MethodPost,
-			body:   Google,
-			want: want{
-				code:        201,
-				body:        "http://localhost:8080/2",
-				contentType: "text/plain",
-			},
-		},
-		{
-			name:   "negative test #1",
-			url:    "/",
-			method: http.MethodPost,
-			body:   "",
-			want: want{
-				code:        400,
-				body:        "empty url",
-				contentType: "text/plain",
-			},
-		},
-		{
-			name:   "negative test #2",
-			url:    "/search",
-			method: http.MethodGet,
-			body:   "",
-			want: want{
-				code:        400,
-				body:        "wrong id",
-				contentType: "text/plain",
-			},
-		},
-		{
-			name:   "positive test #3",
-			url:    "/1",
+			name:   fmt.Sprintf("fetching just shorted url /%d", counter),
+			url:    fmt.Sprintf("/%d", counter),
 			method: http.MethodGet,
 			body:   "",
 			want: want{
@@ -89,8 +74,48 @@ func TestRoutes(t *testing.T) {
 			},
 		},
 		{
-			name:   "positive test #4",
-			url:    "/2",
+			name:   "shorting YA via body POST with different base addr",
+			url:    "/",
+			method: http.MethodPost,
+			body:   YA,
+			pre: func() {
+				router = routerWithAnotherBase
+			},
+			post: func() {
+				router = originalRouter
+			},
+			want: want{
+				code:        201,
+				body:        fmt.Sprintf("https://ya.us/s/%d", inc(&counter)),
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   fmt.Sprintf("fetching just shorted url /%d", counter),
+			url:    fmt.Sprintf("/%d", counter),
+			method: http.MethodGet,
+			body:   "",
+			want: want{
+				code:           307,
+				body:           "",
+				contentType:    "text/plain",
+				locationHeader: YA,
+			},
+		},
+		{
+			name:   "shorting Google via body POST",
+			url:    "/",
+			method: http.MethodPost,
+			body:   Google,
+			want: want{
+				code:        201,
+				body:        fmt.Sprintf("http://localhost:8080/%d", inc(&counter)),
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   fmt.Sprintf("fetching just shorted url /%d", counter),
+			url:    fmt.Sprintf("/%d", counter),
 			method: http.MethodGet,
 			body:   "",
 			want: want{
@@ -101,8 +126,19 @@ func TestRoutes(t *testing.T) {
 			},
 		},
 		{
-			name:   "negative test #3",
-			url:    "/3",
+			name:   "shorting empty url via body POST",
+			url:    "/",
+			method: http.MethodPost,
+			body:   "",
+			want: want{
+				code:        400,
+				body:        "empty url",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "fetching wrong url",
+			url:    "/search",
 			method: http.MethodGet,
 			body:   "",
 			want: want{
@@ -112,18 +148,29 @@ func TestRoutes(t *testing.T) {
 			},
 		},
 		{
-			name:   "api positive test #1",
+			name:   "fetching non-existing url",
+			url:    "/100",
+			method: http.MethodGet,
+			body:   "",
+			want: want{
+				code:        400,
+				body:        "wrong id",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "shorting YA via api POST",
 			url:    "/api/shorten",
 			method: http.MethodPost,
 			body:   fmt.Sprintf(`{"url":"%s"}`, YA),
 			want: want{
 				code:        201,
-				body:        `{"result":"http://localhost:8080/3"}`,
+				body:        fmt.Sprintf(`{"result":"http://localhost:8080/%d"}`, inc(&counter)),
 				contentType: "application/json",
 			},
 		},
 		{
-			name:   "api negative test #1",
+			name:   "shorting via api POST with wrong json",
 			url:    "/api/shorten",
 			method: http.MethodPost,
 			body:   YA,
@@ -134,7 +181,7 @@ func TestRoutes(t *testing.T) {
 			},
 		},
 		{
-			name:   "api negative test #2",
+			name:   "shorting via api POST with empty url",
 			url:    "/api/shorten",
 			method: http.MethodPost,
 			body:   fmt.Sprintf(`{"url":"%s"}`, ""),
@@ -144,9 +191,25 @@ func TestRoutes(t *testing.T) {
 				contentType: "text/plain",
 			},
 		},
+		{
+			name:   fmt.Sprintf("fetching just shorted url /%d", counter),
+			url:    fmt.Sprintf("/%d", counter),
+			method: http.MethodGet,
+			body:   "",
+			want: want{
+				code:           307,
+				body:           "",
+				contentType:    "text/plain",
+				locationHeader: YA,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.pre != nil {
+				tt.pre()
+			}
+
 			request := httptest.NewRequest(tt.method, tt.url, bytes.NewBuffer([]byte(tt.body)))
 
 			// создаём новый Recorder
@@ -170,6 +233,10 @@ func TestRoutes(t *testing.T) {
 
 			if len(tt.want.locationHeader) > 0 {
 				assert.Equal(t, tt.want.locationHeader, res.Header.Get("Location"))
+			}
+
+			if tt.post != nil {
+				tt.post()
 			}
 		})
 	}

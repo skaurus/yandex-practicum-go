@@ -4,28 +4,37 @@ import (
 	"io"
 	"os"
 
+	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/handlers"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AddStore() gin.HandlerFunc {
-	store := storage.New(storage.Memory)
+func AddStorage(storage *storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set("storage", store)
+		c.Set("storage", storage)
 
 		c.Next()
 	}
 }
 
-func SetupRouter() *gin.Engine {
+func AddConfig(config *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("config", config)
+
+		c.Next()
+	}
+}
+
+func SetupRouter(storage *storage.Storage, config *config.Config) *gin.Engine {
 	gin.DisableConsoleColor()
-	f, _ := os.Create("app.log")
+	f, _ := os.Create(config.LogName)
 	gin.DefaultWriter = io.MultiWriter(f)
 
 	router := gin.Default()
-	router.Use(AddStore())
+	router.Use(AddStorage(storage))
+	router.Use(AddConfig(config))
 
 	router.POST("/", handlers.BodyShorten)
 	router.GET("/:id", handlers.Get)

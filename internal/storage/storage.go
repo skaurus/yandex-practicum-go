@@ -12,27 +12,31 @@ const (
 )
 
 type memoryStorage struct {
-	counter int
+	// это странное решение нужно, чтобы при передаче по ссылке инстанса memoryStorage
+	// counter в этом инстансе не копировался, а оставался общим (нужно в тестах,
+	// чтобы общий storage у двух разных router работал корректно)
+	counter *int
 	store   map[int]string
 }
 
 func New(typ storageType) Storage {
 	switch typ {
 	case Memory:
-		return &memoryStorage{0, make(map[int]string)}
+		c := 0
+		return &memoryStorage{&c, make(map[int]string)}
 	default:
 		panic("unacceptable!")
 	}
 }
 
-func (s *memoryStorage) Shorten(u string) int {
+func (s memoryStorage) Shorten(u string) int {
 	//log.Print(fmt.Sprintf("Store: %v", s))
-	s.counter++
-	s.store[s.counter] = u
-	return s.counter
+	*s.counter++
+	s.store[*s.counter] = u
+	return *s.counter
 }
 
-func (s *memoryStorage) Unshorten(id int) (string, bool) {
+func (s memoryStorage) Unshorten(id int) (string, bool) {
 	url, ok := s.store[id]
 	return url, ok
 }

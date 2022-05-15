@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 
+	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
@@ -18,20 +20,23 @@ const (
 )
 
 func BodyShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(storage.Storage)
+	storage := c.MustGet("storage").(*storage.Storage)
+	config := c.MustGet("config").(*config.Config)
 
-	url, err := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	if len(url) == 0 {
+	if len(body) == 0 {
 		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
-	newID := storage.Shorten(string(url))
-	c.String(http.StatusCreated, "http://localhost:8080/%d", newID)
+	newID := (*storage).Shorten(string(body))
+	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
+
+	c.String(http.StatusCreated, config.BaseURI.ResolveReference(u).String())
 }
 
 type APIRequest struct {
@@ -39,7 +44,8 @@ type APIRequest struct {
 }
 
 func APIShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(storage.Storage)
+	storage := c.MustGet("storage").(*storage.Storage)
+	config := c.MustGet("config").(*config.Config)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
 	//var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -60,19 +66,21 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	shortenedURL := fmt.Sprintf("http://localhost:8080/%d", storage.Shorten(data.URL))
-	c.PureJSON(http.StatusCreated, gin.H{"result": shortenedURL})
+	newID := (*storage).Shorten(string(data.URL))
+	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
+
+	c.PureJSON(http.StatusCreated, gin.H{"result": config.BaseURI.ResolveReference(u).String()})
 }
 
 func Get(c *gin.Context) {
-	storage := c.MustGet("storage").(storage.Storage)
+	storage := c.MustGet("storage").(*storage.Storage)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.String(http.StatusBadRequest, "wrong id")
 		return
 	}
-	url, ok := storage.Unshorten(id)
+	url, ok := (*storage).Unshorten(id)
 	if !ok {
 		c.String(http.StatusBadRequest, "wrong id")
 		return
