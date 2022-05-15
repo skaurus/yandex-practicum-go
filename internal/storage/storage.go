@@ -19,11 +19,14 @@ type memoryStorage struct {
 	store   map[int]string
 }
 
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 func New(typ storageType) Storage {
 	switch typ {
 	case Memory:
-		c := 0
-		return &memoryStorage{&c, make(map[int]string)}
+		return &memoryStorage{Ptr(0), make(map[int]string)}
 	default:
 		panic("unacceptable!")
 	}

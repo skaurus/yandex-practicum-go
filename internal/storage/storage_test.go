@@ -11,7 +11,7 @@ const (
 
 func Test_memoryStorage_Shorten(t *testing.T) {
 	type fields struct {
-		counter int
+		counter *int
 		store   map[int]string
 	}
 	type args struct {
@@ -23,8 +23,8 @@ func Test_memoryStorage_Shorten(t *testing.T) {
 		args   args
 		want   int
 	}{
-		{"can shorten url", fields{0, make(map[int]string)}, args{YA}, 1},
-		{"can shorten new url", fields{1, map[int]string{1: YA}}, args{YA}, 2},
+		{"can shorten url", fields{Ptr(0), make(map[int]string)}, args{YA}, 1},
+		{"can shorten new url", fields{Ptr(1), map[int]string{1: YA}}, args{YA}, 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
