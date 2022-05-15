@@ -8,7 +8,7 @@ import (
 type Config struct {
 	ServerAddr string `env:"SERVER_ADDRESS"`
 	LogName    string `env:"LOG_NAME"`
-	BaseAddr   string `env:"BASE_ADDR"`
+	BaseAddr   string `env:"BASE_URL"`
 	BaseURI    *url.URL
 }
 
