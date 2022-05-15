@@ -26,7 +26,7 @@ func Ptr[T any](v T) *T {
 func New(typ storageType) Storage {
 	switch typ {
 	case Memory:
-		return &memoryStorage{Ptr(0), make(map[int]string)}
+		return &memoryStorage{Ptr[int](0), make(map[int]string)}
 	default:
 		panic("unacceptable!")
 	}
