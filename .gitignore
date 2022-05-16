@@ -23,3 +23,5 @@ vendor/
 .vscode
 
 internal/app/app.log
+app.log
+storage.json

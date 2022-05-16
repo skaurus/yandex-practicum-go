@@ -3,43 +3,31 @@ package storage
 type Storage interface {
 	Shorten(string) int
 	Unshorten(int) (string, bool)
+	Close() error
 }
 
 type storageType int
 
 const (
 	Memory storageType = iota + 1
+	File
 )
 
-type memoryStorage struct {
-	// это странное решение нужно, чтобы при передаче по ссылке инстанса memoryStorage
-	// counter в этом инстансе не копировался, а оставался общим (нужно в тестах,
-	// чтобы общий storage у двух разных router работал корректно)
-	counter *int
-	store   map[int]string
+type ConnectInfo struct {
+	Filename string
 }
 
-func IntPtr(x int) *int {
-	return &x
-}
-
-func New(typ storageType) Storage {
+func New(typ storageType, ci ConnectInfo) Storage {
 	switch typ {
 	case Memory:
 		return &memoryStorage{IntPtr(0), make(map[int]string)}
+	case File:
+		storage, err := NewFileStorage(ci.Filename)
+		if err != nil {
+			panic(err)
+		}
+		return storage
 	default:
 		panic("unacceptable!")
 	}
-}
-
-func (s memoryStorage) Shorten(u string) int {
-	//log.Print(fmt.Sprintf("Store: %v", s))
-	*s.counter++
-	s.store[*s.counter] = u
-	return *s.counter
-}
-
-func (s memoryStorage) Unshorten(id int) (string, bool) {
-	url, ok := s.store[id]
-	return url, ok
 }
