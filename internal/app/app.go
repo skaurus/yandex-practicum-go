@@ -1,8 +1,11 @@
 package app
 
 import (
+	"compress/gzip"
 	"io"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/handlers"
@@ -27,6 +30,43 @@ func AddConfig(config *config.Config) gin.HandlerFunc {
 	}
 }
 
+type gzWriter struct {
+	gin.ResponseWriter
+	Writer io.Writer
+}
+
+func (w gzWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func (w gzWriter) WriteString(s string) (int, error) {
+	return w.Writer.Write([]byte(s))
+}
+
+func GzipCompression(c *gin.Context) {
+	if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
+		c.Next()
+		return
+	}
+	switch c.GetHeader("Content-Type") {
+	case "application/json", "application/javascript", "text/plain", "text/html", "text/css", "text/xml":
+		gz, err := gzip.NewWriterLevel(c.Writer, gzip.BestCompression)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		defer gz.Close()
+
+		c.Writer = gzWriter{c.Writer, gz}
+		c.Header("Content-Encoding", "gzip")
+		c.Next()
+		return
+	default:
+		c.Next()
+		return
+	}
+}
+
 func SetupRouter(storage *storage.Storage, config *config.Config) *gin.Engine {
 	gin.DisableConsoleColor()
 	f, _ := os.Create(config.LogName)
@@ -35,6 +75,7 @@ func SetupRouter(storage *storage.Storage, config *config.Config) *gin.Engine {
 	router := gin.Default()
 	router.Use(AddStorage(storage))
 	router.Use(AddConfig(config))
+	router.Use(GzipCompression)
 
 	router.POST("/", handlers.BodyShorten)
 	router.GET("/:id", handlers.Get)
