@@ -20,7 +20,7 @@ const (
 )
 
 func TestRoutes(t *testing.T) {
-	storage := storage.New(storage.Memory)
+	storage := storage.New(storage.Memory, storage.ConnectInfo{})
 	config := config.ParseConfig()
 	router := SetupRouter(&storage, config)
 

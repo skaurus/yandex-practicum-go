@@ -28,7 +28,7 @@ func NewFileStorage(filename string) (*fileStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	var maxID int = 0
+	var maxID int
 	for n := range s.memoryStorage.store {
 		if n > maxID {
 			maxID = n
