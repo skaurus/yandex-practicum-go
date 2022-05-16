@@ -7,14 +7,19 @@ import (
 )
 
 func main() {
-	storageConnectInfo := storage.ConnectInfo{
-		Filename: "storage.json",
-	}
-	storage := storage.New(storage.File, storageConnectInfo)
-	defer storage.Close()
-
 	config := config.ParseConfig()
 
-	router := app.SetupRouter(&storage, config)
+	var store storage.Storage
+	if len(config.StorageFileName) > 0 {
+		storageConnectInfo := storage.ConnectInfo{
+			Filename: config.StorageFileName,
+		}
+		store = storage.New(storage.File, storageConnectInfo)
+		defer store.Close()
+	} else {
+		store = storage.New(storage.Memory, storage.ConnectInfo{})
+	}
+
+	router := app.SetupRouter(&store, config)
 	router.Run(config.ServerAddr)
 }

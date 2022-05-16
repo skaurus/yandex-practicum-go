@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	ServerAddr string `env:"SERVER_ADDRESS"`
-	LogName    string `env:"LOG_NAME"`
-	BaseAddr   string `env:"BASE_URL"`
-	BaseURI    *url.URL
+	ServerAddr      string `env:"SERVER_ADDRESS"`
+	LogName         string `env:"LOG_NAME"`
+	BaseAddr        string `env:"BASE_URL"`
+	BaseURI         *url.URL
+	StorageFileName string `env:"FILE_STORAGE_PATH"`
 }
 
 func ParseConfig() *Config {
