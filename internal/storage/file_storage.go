@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 )
 
@@ -13,7 +14,7 @@ type fileStorage struct {
 }
 
 func NewFileStorage(filename string) (*fileStorage, error) {
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +26,10 @@ func NewFileStorage(filename string) (*fileStorage, error) {
 	}
 	s.encoder.SetEscapeHTML(false)
 	err = s.decoder.Decode(&s.memoryStorage.store)
+	if err == io.EOF {
+		s.memoryStorage.store = make(map[int]string)
+		err = nil
+	}
 	if err != nil {
 		return nil, err
 	}
