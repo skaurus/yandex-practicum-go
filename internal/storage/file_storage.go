@@ -13,7 +13,7 @@ type fileStorage struct {
 }
 
 func NewFileStorage(filename string) (*fileStorage, error) {
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
 	}
