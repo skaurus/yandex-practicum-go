@@ -43,6 +43,16 @@ func (w gzWriter) WriteString(s string) (int, error) {
 	return w.Writer.Write([]byte(s))
 }
 
+// избегаем попадания заголовков в gzWriter
+func (w gzWriter) Header() http.Header {
+	w.ResponseWriter.Header()
+}
+
+// избегаем попадания заголовков в gzWriter
+func (w gzWriter) WriteHeader(statusCode int) {
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
 func GzipCompression(c *gin.Context) {
 	if !strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") {
 		c.Next()
