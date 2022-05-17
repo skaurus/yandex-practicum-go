@@ -45,7 +45,7 @@ func (w gzWriter) WriteString(s string) (int, error) {
 
 // избегаем попадания заголовков в gzWriter
 func (w gzWriter) Header() http.Header {
-	w.ResponseWriter.Header()
+	return w.ResponseWriter.Header()
 }
 
 // избегаем попадания заголовков в gzWriter
