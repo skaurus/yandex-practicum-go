@@ -1,12 +1,17 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/skaurus/yandex-practicum-go/internal/app"
 	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	config := config.ParseConfig()
 
 	var store storage.Storage
@@ -20,6 +25,6 @@ func main() {
 		store = storage.New(storage.Memory, storage.ConnectInfo{})
 	}
 
-	router := app.SetupRouter(&store, config)
+	router := app.SetupRouter(config, &store)
 	router.Run(config.ServerAddr)
 }

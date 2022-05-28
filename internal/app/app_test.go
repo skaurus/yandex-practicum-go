@@ -22,13 +22,13 @@ const (
 func TestRoutes(t *testing.T) {
 	storage := storage.New(storage.Memory, storage.ConnectInfo{})
 	config := config.ParseConfig()
-	router := SetupRouter(&storage, config)
+	router := SetupRouter(config, &storage)
 
 	configWithAnotherBase := *config
 	configWithAnotherBase.BaseAddr = "https://ya.us/s/" // yet another url shortener
 	configWithAnotherBase.BaseURI, _ = url.Parse(configWithAnotherBase.BaseAddr)
 
-	routerWithAnotherBase := SetupRouter(&storage, &configWithAnotherBase)
+	routerWithAnotherBase := SetupRouter(&configWithAnotherBase, &storage)
 	originalRouter := router
 
 	type want struct {
