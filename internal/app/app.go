@@ -196,8 +196,9 @@ func SetupRouter(config *config.Config, storage *storage.Storage) *gin.Engine {
 	router.Use(SetCookies)
 
 	router.POST("/", handlers.BodyShorten)
-	router.GET("/:id", handlers.Get)
+	router.GET("/:id", handlers.Redirect)
 	router.POST("/api/shorten", handlers.APIShorten)
+	router.GET("/api/user/urls", handlers.GetAllUserURLs)
 
 	return router
 }

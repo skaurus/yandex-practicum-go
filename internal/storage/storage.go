@@ -1,8 +1,9 @@
 package storage
 
 type Storage interface {
-	Shorten(string) int
-	Unshorten(int) (string, bool)
+	Store(string, string) int
+	GetByID(int) (string, bool)
+	GetAllIDsFromUser(string) []int
 	Close() error
 }
 
@@ -20,12 +21,13 @@ type ConnectInfo struct {
 func New(typ storageType, ci ConnectInfo) Storage {
 	switch typ {
 	case Memory:
-		return &memoryStorage{IntPtr(0), make(map[int]string)}
+		return &memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
 	case File:
 		storage, err := NewFileStorage(ci.Filename)
 		if err != nil {
 			panic(err)
 		}
+		defer storage.Close()
 		return storage
 	default:
 		panic("unacceptable!")

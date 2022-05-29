@@ -19,9 +19,15 @@ const (
 	ErrEmptyURL = "empty url"
 )
 
+func createRedirectURL(baseURI *url.URL, newID int) string {
+	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
+	return baseURI.ResolveReference(u).String()
+}
+
 func BodyShorten(c *gin.Context) {
 	storage := c.MustGet("storage").(*storage.Storage)
 	config := c.MustGet("config").(*config.Config)
+	uniq := c.MustGet("uniq").(string)
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -33,10 +39,8 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 
-	newID := (*storage).Shorten(string(body))
-	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
-
-	c.String(http.StatusCreated, config.BaseURI.ResolveReference(u).String())
+	newID := (*storage).Store(string(body), uniq)
+	c.String(http.StatusCreated, createRedirectURL(config.BaseURI, newID))
 }
 
 type APIRequest struct {
@@ -46,6 +50,7 @@ type APIRequest struct {
 func APIShorten(c *gin.Context) {
 	storage := c.MustGet("storage").(*storage.Storage)
 	config := c.MustGet("config").(*config.Config)
+	uniq := c.MustGet("uniq").(string)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
 	//var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -66,13 +71,11 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	newID := (*storage).Shorten(string(data.URL))
-	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
-
-	c.PureJSON(http.StatusCreated, gin.H{"result": config.BaseURI.ResolveReference(u).String()})
+	newID := (*storage).Store(data.URL, uniq)
+	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(config.BaseURI, newID)})
 }
 
-func Get(c *gin.Context) {
+func Redirect(c *gin.Context) {
 	storage := c.MustGet("storage").(*storage.Storage)
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -80,11 +83,42 @@ func Get(c *gin.Context) {
 		c.String(http.StatusBadRequest, "wrong id")
 		return
 	}
-	url, ok := (*storage).Unshorten(id)
+	originalURL, ok := (*storage).GetByID(id)
 	if !ok {
 		c.String(http.StatusBadRequest, "wrong id")
 		return
 	}
-	c.Header("Location", url)
+	c.Header("Location", originalURL)
 	c.String(http.StatusTemporaryRedirect, "")
+}
+
+type userURLRow struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+type allUserURLs []userURLRow
+
+func GetAllUserURLs(c *gin.Context) {
+	storage := c.MustGet("storage").(*storage.Storage)
+	config := c.MustGet("config").(*config.Config)
+	uniq := c.MustGet("uniq").(string)
+
+	ids := (*storage).GetAllIDsFromUser(uniq)
+
+	answer := make(allUserURLs, len(ids))
+	for _, id := range ids {
+		originalURL, ok := (*storage).GetByID(id)
+		if !ok {
+			continue
+		}
+		answer = append(answer, userURLRow{
+			ShortURL:    createRedirectURL(config.BaseURI, id),
+			OriginalURL: originalURL,
+		})
+	}
+	if len(answer) == 0 {
+		c.String(http.StatusNoContent, "")
+		return
+	}
+	c.PureJSON(http.StatusOK, answer)
 }

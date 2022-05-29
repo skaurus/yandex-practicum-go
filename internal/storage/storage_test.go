@@ -33,7 +33,7 @@ func Test_memoryStorage_Shorten(t *testing.T) {
 				store:   tt.fields.store,
 			}
 			if got := s.Shorten(tt.args.u); got != tt.want {
-				t.Errorf("Shorten(%v, %v) = %v, want %v", s, tt.args.u, got, tt.want)
+				t.Errorf("Store(%v, %v) = %v, want %v", s, tt.args.u, got, tt.want)
 			}
 		})
 	}
@@ -66,10 +66,10 @@ func Test_memoryStorage_Unshorten(t *testing.T) {
 			}
 			got, got1 := s.Unshorten(tt.args.id)
 			if got != tt.want {
-				t.Errorf("Unshorten(%v, %v) got = %v, want %v", s, tt.args.id, got, tt.want)
+				t.Errorf("GetByID(%v, %v) got = %v, want %v", s, tt.args.id, got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("Unshorten(%v, %v) got1 = %v, want %v", s, tt.args.id, got1, tt.want1)
+				t.Errorf("GetByID(%v, %v) got1 = %v, want %v", s, tt.args.id, got1, tt.want1)
 			}
 		})
 	}

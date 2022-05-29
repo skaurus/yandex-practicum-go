@@ -20,11 +20,13 @@ func main() {
 			Filename: config.StorageFileName,
 		}
 		store = storage.New(storage.File, storageConnectInfo)
-		defer store.Close()
 	} else {
 		store = storage.New(storage.Memory, storage.ConnectInfo{})
 	}
 
 	router := app.SetupRouter(config, &store)
-	router.Run(config.ServerAddr)
+	err := router.Run(config.ServerAddr)
+	if err != nil {
+		panic(err)
+	}
 }
