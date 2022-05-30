@@ -76,7 +76,7 @@ WARNING - probably, temporary backup file still exists.
 It means that last shutdown was unsuccessful
 and some shortened urls are probably lost.
 To stop seeing this message and start - move that file somewhere
-(and maybe look at it later for clues why that happened).`)
+(and maybe look at it later for clues why that happened)`)
 	}
 
 	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0644)
