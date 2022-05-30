@@ -184,7 +184,7 @@ func SetCookies(c *gin.Context) {
 
 func SetupRouter(config *config.Config, storage *storage.Storage) *gin.Engine {
 	gin.DisableConsoleColor()
-	f, _ := os.Create(config.LogName)
+	f, _ := os.OpenFile(config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	gin.DefaultWriter = io.MultiWriter(f)
 
 	zerolog.SetGlobalLevel(config.LogLevel)
