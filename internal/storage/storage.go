@@ -18,6 +18,13 @@ type ConnectInfo struct {
 	Filename string
 }
 
+// New - в декларации метода указано, что он возвращает тип Storage;
+// при этом значения, которые возвращает return - это на самом деле ссылки;
+// но всё же в вызывающем коде (main.go) мы получаем value, а не ссылки.
+// Что не оптимально по скорости. Но если попробовать изменить тип в
+// декларации, компилятор будет ругаться, что мы возвращаем не тот тип:
+// cannot use ... (type *memoryStorage) as the type *Storage
+// TODO: Как быть?
 func New(typ storageType, ci ConnectInfo) Storage {
 	switch typ {
 	case Memory:
@@ -27,7 +34,6 @@ func New(typ storageType, ci ConnectInfo) Storage {
 		if err != nil {
 			panic(err)
 		}
-		defer storage.Close()
 		return storage
 	default:
 		panic("unacceptable!")

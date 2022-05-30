@@ -31,6 +31,7 @@ func (s shortenedURLs) MarshalJSON() ([]byte, error) {
 	// 10 слайсов []byte, с 50 уже чуть медленнее, и дальше отставание нарастает
 	var bytesBuffer bytes.Buffer
 
+	bytesBuffer.WriteString("[")
 	for _, v := range s {
 		rowJson, err = v.MarshalJSON()
 		if err != nil {
@@ -39,6 +40,10 @@ func (s shortenedURLs) MarshalJSON() ([]byte, error) {
 		bytesBuffer.Write(rowJson)
 		bytesBuffer.WriteString(",")
 	}
+	if len(s) > 0 { // отрезаем лишнюю запятую
+		bytesBuffer.Truncate(bytesBuffer.Len() - 1)
+	}
+	bytesBuffer.WriteString("]")
 
 	return bytesBuffer.Bytes(), nil
 }
@@ -91,7 +96,7 @@ To stop seeing this message and start - move that file somewhere
 		// переиспользуем код хранилища данных в памяти, чтобы хранить
 		// распаршенный файл, что без всяких накладных расходов даёт
 		// удобный, совместимый интерфейс
-		memoryStorage: New(Memory, ConnectInfo{}).(memoryStorage),
+		memoryStorage: *New(Memory, ConnectInfo{}).(*memoryStorage),
 	}
 	s.encoder.SetEscapeHTML(false)
 
@@ -107,7 +112,7 @@ To stop seeing this message and start - move that file somewhere
 			maxID = row.id
 		}
 		s.memoryStorage.idToURLs[row.id] = row.originalUrl
-		s.userToIDs[row.addedBy] = append(s.userToIDs[row.addedBy], row.id)
+		s.memoryStorage.userToIDs[row.addedBy] = append(s.memoryStorage.userToIDs[row.addedBy], row.id)
 	}
 	s.memoryStorage.counter = IntPtr(maxID)
 
@@ -152,7 +157,7 @@ func (s fileStorage) GetAllIDsFromUser(by string) []int {
 // что вообще ей считать - хороший вопрос, оставшийся за скобками
 func (s fileStorage) memoryToRows() *shortenedURLs {
 	// понятно, что скорее всего такой длины не хватит, но как стартовая точка...
-	rows := make(shortenedURLs, len(s.memoryStorage.userToIDs))
+	rows := make(shortenedURLs, 0, len(s.memoryStorage.userToIDs))
 	for user, ids := range s.memoryStorage.userToIDs {
 		for _, id := range ids {
 			// жалко создавать переменную для originalUrl - хотя тогда создание
@@ -164,12 +169,13 @@ func (s fileStorage) memoryToRows() *shortenedURLs {
 	return &rows
 }
 
+// createBackupFile создаёт файл с дампом текущего состояния хранилища
+// сохранённых в памяти урлов. Подмену старого дампа новым сделаем, только если
+// всё закончится успешно.
 func (s fileStorage) createBackupFile(path string) (*os.File, error) {
-	// пишем всё в файл рядом и только если завершили успешно - подменяем
-	// файлы. сочетание флагов os.O_CREATE|os.O_EXCL требует, чтобы файла
-	// не было - а быть он может только если прошлое сохранение на диск
-	// завершилось ошибкой. поэтому пусть оператор сначала отреагирует,
-	// прежде чем мы например перезапишем этот файл
+	// Сочетание флагов os.O_CREATE|os.O_EXCL требует, чтобы файла не было - а
+	// быть он может, только если прошлое сохранение на диск завершилось ошибкой.
+	// В таком случае лучше не будем ничего делать, пока оператор не отреагирует.
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return nil, err
@@ -200,7 +206,7 @@ func (s fileStorage) Close() error {
 		// TODO: быть уверенным в том, что это точно заметят. так - шансы выше
 		panic(fmt.Errorf(`
 Some error happened during dumping state to disk.
-WARNING - if it fails because file already exists,
+WARNING - if it fails because .new file already exists,
 this should have not happened at all - we checked at
 the start that this file is not here. Do investigate.
 
@@ -208,6 +214,6 @@ If it fails for some other reason - I have no idea, see an error:
 %w`, err))
 	}
 
-	// заменяем старую базу на свежий бэкап (и молимся)
+	// заменяем старый бэкап на свежий
 	return os.Rename(newFile.Name(), s.file.Name())
 }

@@ -2,6 +2,9 @@ package storage
 
 import (
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"gotest.tools/v3/assert"
 )
 
 const (
@@ -9,68 +12,64 @@ const (
 	Google = "https://google.com"
 )
 
-func Test_memoryStorage_Shorten(t *testing.T) {
-	type fields struct {
-		counter *int
-		store   map[int]string
-	}
+func Test_memoryStorage_Store(t *testing.T) {
 	type args struct {
-		u string
+		url     string
+		addedBy string
 	}
+	store := New(Memory, ConnectInfo{})
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   int
+		name         string
+		args         args
+		wantedValue  int
+		wantedStruct memoryStorage
 	}{
-		{"can shorten url", fields{IntPtr(0), make(map[int]string)}, args{YA}, 1},
-		{"can shorten new url", fields{IntPtr(1), map[int]string{1: YA}}, args{YA}, 2},
+		{"can shorten url", args{YA, "skaurus"}, 1, memoryStorage{
+			IntPtr(1),
+			map[int]string{1: YA},
+			map[string][]int{"skaurus": {1}},
+		}},
+		{"can shorten new url", args{YA, "skaurus"}, 2, memoryStorage{
+			IntPtr(2),
+			map[int]string{1: YA, 2: YA},
+			map[string][]int{"skaurus": {1, 2}},
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &memoryStorage{
-				counter: tt.fields.counter,
-				store:   tt.fields.store,
-			}
-			if got := s.Shorten(tt.args.u); got != tt.want {
-				t.Errorf("Store(%v, %v) = %v, want %v", s, tt.args.u, got, tt.want)
-			}
+			got := store.Store(tt.args.url, tt.args.addedBy)
+			assert.Equal(t, tt.wantedValue, got)
+			// AllowUnexported не упоминается в документации пакета gotest.tools,
+			// но удалось нагуглить решение по тексту ошибки
+			assert.DeepEqual(t, &tt.wantedStruct, store, cmp.AllowUnexported(memoryStorage{}))
 		})
 	}
 }
 
-func Test_memoryStorage_Unshorten(t *testing.T) {
-	type fields struct {
-		counter *int
-		store   map[int]string
-	}
+func Test_memoryStorage_GetByID(t *testing.T) {
 	type args struct {
 		id int
 	}
+	store := memoryStorage{
+		IntPtr(2),
+		map[int]string{1: YA, 2: Google},
+		map[string][]int{"skaurus": {1, 2}},
+	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   string
-		want1  bool
+		name  string
+		args  args
+		want1 string
+		want2 bool
 	}{
-		{"can unshorten url", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{1}, YA, true},
-		{"can unshorten url", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{2}, Google, true},
-		{"can't unshorten what is not there", fields{IntPtr(2), map[int]string{1: YA, 2: Google}}, args{3}, "", false},
+		{"can unshorten url", args{1}, YA, true},
+		{"can unshorten url", args{2}, Google, true},
+		{"can't unshorten what is not there", args{3}, "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &memoryStorage{
-				counter: tt.fields.counter,
-				store:   tt.fields.store,
-			}
-			got, got1 := s.Unshorten(tt.args.id)
-			if got != tt.want {
-				t.Errorf("GetByID(%v, %v) got = %v, want %v", s, tt.args.id, got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("GetByID(%v, %v) got1 = %v, want %v", s, tt.args.id, got1, tt.want1)
-			}
+			got1, got2 := store.GetByID(tt.args.id)
+			assert.Equal(t, tt.want1, got1)
+			assert.Equal(t, tt.want2, got2)
 		})
 	}
 }
