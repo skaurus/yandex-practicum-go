@@ -3,15 +3,17 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
+
+	"gotest.tools/v3/assert"
 )
 
 const (
@@ -220,16 +222,16 @@ func TestRoutes(t *testing.T) {
 
 			defer res.Body.Close()
 			body, err := io.ReadAll(res.Body)
-			if !assert.NoError(t, err, "can read body") {
-				return
-			}
+			//if !assert.NoError(t, err, "can read body") {
+			//	return
+			//}
+			assert.NilError(t, err, "can read body")
 
 			assert.Equal(t, tt.want.code, res.StatusCode)
-			if tt.want.contentType == "application/json" {
-				assert.JSONEq(t, tt.want.body, string(body))
-			} else {
-				assert.Equal(t, tt.want.body, string(body))
-			}
+			assert.Equal(t,
+				strings.Trim(tt.want.body, "\n"),
+				strings.Trim(string(body), "\n"),
+			)
 
 			if len(tt.want.locationHeader) > 0 {
 				assert.Equal(t, tt.want.locationHeader, res.Header.Get("Location"))
