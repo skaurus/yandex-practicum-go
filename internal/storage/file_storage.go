@@ -13,17 +13,17 @@ import (
 // будущее описание строки таблицы в базе данных, скорее всего
 type shortenedURL struct {
 	id          int
-	originalUrl string
+	originalURL string
 	addedBy     string
 }
 type shortenedURLs []shortenedURL
 
 func (s shortenedURL) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`[%d,"%s","%s"]`, s.id, s.originalUrl, s.addedBy)), nil
+	return []byte(fmt.Sprintf(`[%d,"%s","%s"]`, s.id, s.originalURL, s.addedBy)), nil
 }
 
 func (s shortenedURLs) MarshalJSON() ([]byte, error) {
-	var rowJson []byte
+	var rowJSON []byte
 	var err error
 
 	// https://stackoverflow.com/a/1766304/320345
@@ -33,11 +33,11 @@ func (s shortenedURLs) MarshalJSON() ([]byte, error) {
 
 	bytesBuffer.WriteString("[")
 	for _, v := range s {
-		rowJson, err = v.MarshalJSON()
+		rowJSON, err = v.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		bytesBuffer.Write(rowJson)
+		bytesBuffer.Write(rowJSON)
 		bytesBuffer.WriteString(",")
 	}
 	if len(s) > 0 { // отрезаем лишнюю запятую
@@ -49,7 +49,7 @@ func (s shortenedURLs) MarshalJSON() ([]byte, error) {
 }
 
 func (s *shortenedURL) UnmarshalJSON(buf []byte) error {
-	tmp := []interface{}{&s.id, &s.originalUrl, &s.addedBy}
+	tmp := []interface{}{&s.id, &s.originalURL, &s.addedBy}
 	wantLen := len(tmp)
 	if err := json.Unmarshal(buf, &tmp); err != nil {
 		return err
@@ -69,18 +69,17 @@ type fileStorage struct {
 
 func NewFileStorage(filename string) (*fileStorage, error) {
 	// проверка консистентности перед стартом
-	file, err := os.OpenFile(filename+".new", os.O_RDONLY, 0644)
+	_, err := os.OpenFile(filename+".new", os.O_RDONLY, 0644)
 	if err == nil {
 		return nil, fmt.Errorf(`
 WARNING - probably, temporary backup file still exists.
 It means that last shutdown was unsuccessful
 and some shortened urls are probably lost.
 To stop seeing this message and start - move that file somewhere
-(and maybe look at it later for clues why that happened).
-`)
+(and maybe look at it later for clues why that happened).`)
 	}
 
-	file, err = os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +110,7 @@ To stop seeing this message and start - move that file somewhere
 		if row.id > maxID {
 			maxID = row.id
 		}
-		s.memoryStorage.idToURLs[row.id] = row.originalUrl
+		s.memoryStorage.idToURLs[row.id] = row.originalURL
 		s.memoryStorage.userToIDs[row.addedBy] = append(s.memoryStorage.userToIDs[row.addedBy], row.id)
 	}
 	s.memoryStorage.counter = IntPtr(maxID)
@@ -160,7 +159,7 @@ func (s fileStorage) memoryToRows() *shortenedURLs {
 	rows := make(shortenedURLs, 0, len(s.memoryStorage.userToIDs))
 	for user, ids := range s.memoryStorage.userToIDs {
 		for _, id := range ids {
-			// жалко создавать переменную для originalUrl - хотя тогда создание
+			// жалко создавать переменную для originalURL - хотя тогда создание
 			// строки было бы более читаемо. может, зря жалко?
 			row := shortenedURL{id, s.memoryStorage.idToURLs[id], user}
 			rows = append(rows, row)

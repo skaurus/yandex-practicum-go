@@ -142,8 +142,11 @@ func SetCookies(c *gin.Context) {
 		}
 
 		// 2. пытаемся достать из куки айди и подпись
-		maybeUniq, sign, found := strings.Cut(cookieValue, "-")
-		if !found {
+		// Cut появился только в go 1.18 ((
+		//maybeUniq, sign, found := strings.Cut(cookieValue, "-")
+		parts := strings.SplitN(cookieValue, "-", 2)
+		maybeUniq, sign := parts[0], parts[1]
+		if len(sign) == 0 {
 			log.Error().Msg("uniq cookie don't have separator")
 			break
 		}
