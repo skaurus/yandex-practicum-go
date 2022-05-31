@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS urls (
 
 	err = db.ExecWithTimeout(
 		context.Background(), 1*time.Second,
-		"CREATE INDEX IF NOT EXISTS ON urls (original_url)",
+		"CREATE INDEX IF NOT EXISTS \"urls_original_url_idx\" ON urls (original_url)",
 	)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS urls (
 
 	err = db.ExecWithTimeout(
 		context.Background(), 1*time.Second,
-		"CREATE INDEX IF NOT EXISTS ON urls (added_by)",
+		"CREATE INDEX IF NOT EXISTS \"urls_added_by_idx\" ON urls (added_by)",
 	)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (db *dbStorage) Store(u string, by string) (int, error) {
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"INSERT INTO urls (original_url, added_by) VALUES (?, ?) RETURNING id",
+		"INSERT INTO urls (original_url, added_by) VALUES ($1, $2) RETURNING id",
 		u, by,
 	)
 	err := row.Scan(&id)
@@ -85,7 +85,7 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"SELECT original_url FROM urls WHERE id = ?",
+		"SELECT original_url FROM urls WHERE id = $1",
 		id,
 	)
 	err := row.Scan(&originalURL)
@@ -100,30 +100,30 @@ func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	defer cancel()
 	rows, err := db.handle.Query(
 		ctx,
-		"SELECT id, original_url FROM urls WHERE added_by = ?",
+		"SELECT id, original_url FROM urls WHERE added_by = $1",
 		by,
 	)
 	cancel()
 
 	var answer shortenedURLs
 	var id int
-	var originalUrl string
+	var originalURL string
 	for rows.Next() {
-		err := rows.Scan(&id, &originalUrl)
+		err := rows.Scan(&id, &originalURL)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				err = ErrNotFound
 			}
 			return nil, err
 		}
-		answer = append(answer, shortenedURL{id, originalUrl, by})
+		answer = append(answer, shortenedURL{id, originalURL, by})
 	}
 
 	return answer, err
 }
 
 func (db *dbStorage) Close() error {
-	return db.Close()
+	return db.handle.Close(context.Background())
 }
 
 func (db *dbStorage) ExecWithTimeout(ctx context.Context, timeout time.Duration, sql string) error {
