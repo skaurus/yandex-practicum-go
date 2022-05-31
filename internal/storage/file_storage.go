@@ -118,35 +118,19 @@ To stop seeing this message and start - move that file somewhere
 	return s, nil
 }
 
-func (s fileStorage) Store(u string, by string) int {
+func (s fileStorage) Store(u string, by string) (int, error) {
 	// переиспользуем апи, имеем всегда актуальное состояние базы в памяти
-	s.memoryStorage.Store(u, by)
-
-	// TODO: попробовать разобраться, точно ли дело в этом, и можно ли это
-	// TODO: поправить. А то как-то не внушает надёжности. И без этого метод
-	// TODO: мог бы быть вообще однострочным
-	// так как при остановке проекта в GoLand не вызывается defer s.Close() в
-	// main.go - приходится писать в файл при каждом сокращении ссылки
-	/*bytes, err := json.Marshal(&s.memoryStorage.store)
-	if err != nil {
-		panic(err)
-	}
-	_, err = s.file.WriteAt(bytes, 0)
-	if err != nil {
-		panic(err)
-	}*/
-
-	return *s.counter
+	return s.memoryStorage.Store(u, by)
 }
 
 // TODO: поискать, можно ли как-то без бойлерплейта сказать коду все
 // TODO: "неопределённые" методы пробовать искать в своём поле memoryStorage.
 // TODO: То есть что-то вроде объявления наследования
-func (s fileStorage) GetByID(id int) (string, bool) {
+func (s fileStorage) GetByID(id int) (string, error) {
 	return s.memoryStorage.GetByID(id)
 }
 
-func (s fileStorage) GetAllIDsFromUser(by string) []int {
+func (s fileStorage) GetAllIDsFromUser(by string) ([]int, error) {
 	return s.memoryStorage.GetAllIDsFromUser(by)
 }
 

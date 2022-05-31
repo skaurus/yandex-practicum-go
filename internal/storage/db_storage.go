@@ -2,7 +2,10 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"time"
+
+	"github.com/skaurus/yandex-practicum-go/internal/utils"
 
 	"github.com/jackc/pgx/v4"
 )
@@ -56,7 +59,7 @@ CREATE TABLE IF NOT EXISTS urls (
 	return db, nil
 }
 
-func (db *dbStorage) Store(u string, by string) int {
+func (db *dbStorage) Store(u string, by string) (int, error) {
 	var id int
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -65,11 +68,11 @@ func (db *dbStorage) Store(u string, by string) int {
 		"INSERT INTO urls (original_url, added_by) VALUES (?, ?) RETURNING id",
 		u, by,
 	)
-	row.Scan(&id)
-	return id
+	err := row.Scan(&id)
+	return id, err
 }
 
-func (db *dbStorage) GetByID(id int) (string, bool) {
+func (db *dbStorage) GetByID(id int) (string, error) {
 	var originalURL string
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -79,10 +82,13 @@ func (db *dbStorage) GetByID(id int) (string, bool) {
 		id,
 	)
 	err := row.Scan(&originalURL)
-	return originalURL, err == nil
+	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+		err = errors.New(utils.StorageErrNotFound)
+	}
+	return originalURL, err
 }
 
-func (db *dbStorage) GetAllIDsFromUser(by string) []int {
+func (db *dbStorage) GetAllIDsFromUser(by string) ([]int, error) {
 	var ids []int
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -91,8 +97,11 @@ func (db *dbStorage) GetAllIDsFromUser(by string) []int {
 		"SELECT array_agg(id) FROM urls WHERE added_by = ?",
 		by,
 	)
-	row.Scan(&ids)
-	return ids
+	err := row.Scan(&ids)
+	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+		err = errors.New(utils.StorageErrNotFound)
+	}
+	return ids, err
 }
 
 func (db *dbStorage) Close() error {

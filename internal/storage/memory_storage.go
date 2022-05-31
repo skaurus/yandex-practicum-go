@@ -1,5 +1,11 @@
 package storage
 
+import (
+	"errors"
+
+	"github.com/skaurus/yandex-practicum-go/internal/utils"
+)
+
 type memoryStorage struct {
 	// Это странное решение - что counter это ссылка - нужно, чтобы при передаче
 	// по ссылке инстанса memoryStorage поле counter в этом инстансе не копировалось,
@@ -21,20 +27,29 @@ func NewMemoryStorage() *memoryStorage {
 	return &memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
 }
 
-func (s memoryStorage) Store(u string, by string) int {
+func (s memoryStorage) Store(u string, by string) (int, error) {
 	*s.counter++
 	s.idToURLs[*s.counter] = u
 	s.userToIDs[by] = append(s.userToIDs[by], *s.counter)
-	return *s.counter
+	return *s.counter, nil
 }
 
-func (s memoryStorage) GetByID(id int) (string, bool) {
+func (s memoryStorage) GetByID(id int) (string, error) {
 	url, ok := s.idToURLs[id]
-	return url, ok
+	var err error
+	if !ok {
+		err = errors.New(utils.StorageErrNotFound)
+	}
+	return url, err
 }
 
-func (s memoryStorage) GetAllIDsFromUser(by string) []int {
-	return s.userToIDs[by]
+func (s memoryStorage) GetAllIDsFromUser(by string) ([]int, error) {
+	ids, ok := s.userToIDs[by]
+	var err error
+	if !ok {
+		err = errors.New(utils.StorageErrNotFound)
+	}
+	return ids, err
 }
 
 func (s memoryStorage) Close() error {

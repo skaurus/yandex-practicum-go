@@ -5,9 +5,9 @@ import (
 )
 
 type Storage interface {
-	Store(string, string) int
-	GetByID(int) (string, bool)
-	GetAllIDsFromUser(string) []int
+	Store(string, string) (int, error)
+	GetByID(int) (string, error)
+	GetAllIDsFromUser(string) ([]int, error)
 	Close() error
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/skaurus/yandex-practicum-go/internal/config"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
+	"github.com/skaurus/yandex-practicum-go/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,7 +42,12 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 
-	newID := (*storage).Store(string(body), uniq)
+	newID, err := (*storage).Store(string(body), uniq)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
 	c.String(http.StatusCreated, createRedirectURL(config.BaseURI, newID))
 }
 
@@ -73,7 +79,12 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	newID := (*storage).Store(data.URL, uniq)
+	newID, err := (*storage).Store(data.URL, uniq)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
 	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(config.BaseURI, newID)})
 }
 
@@ -85,11 +96,17 @@ func Redirect(c *gin.Context) {
 		c.String(http.StatusBadRequest, "wrong id")
 		return
 	}
-	originalURL, ok := (*storage).GetByID(id)
-	if !ok {
-		c.String(http.StatusBadRequest, "wrong id")
+
+	originalURL, err := (*storage).GetByID(id)
+	if err != nil {
+		if err.Error() == utils.StorageErrNotFound {
+			c.String(http.StatusBadRequest, "wrong id")
+		} else {
+			c.String(http.StatusBadRequest, err.Error())
+		}
 		return
 	}
+
 	c.Header("Location", originalURL)
 	c.String(http.StatusTemporaryRedirect, "")
 }
@@ -105,19 +122,33 @@ func GetAllUserURLs(c *gin.Context) {
 	config := c.MustGet("config").(*config.Config)
 	uniq := c.MustGet("uniq").(string)
 
-	ids := (*storage).GetAllIDsFromUser(uniq)
+	ids, err := (*storage).GetAllIDsFromUser(uniq)
+	if err != nil {
+		if err.Error() == utils.StorageErrNotFound {
+			c.String(http.StatusBadRequest, "no urls found for current user")
+		} else {
+			c.String(http.StatusBadRequest, err.Error())
+		}
+		return
+	}
 
 	answer := make(allUserURLs, 0, len(ids))
 	for _, id := range ids {
-		originalURL, ok := (*storage).GetByID(id)
-		if !ok {
-			continue
+		originalURL, err := (*storage).GetByID(id)
+		if err != nil {
+			if err.Error() == utils.StorageErrNotFound {
+				continue
+			} else {
+				c.String(http.StatusBadRequest, err.Error())
+				return
+			}
 		}
 		answer = append(answer, userURLRow{
 			ShortURL:    createRedirectURL(config.BaseURI, id),
 			OriginalURL: originalURL,
 		})
 	}
+
 	if len(answer) == 0 {
 		c.String(http.StatusNoContent, "")
 		return
