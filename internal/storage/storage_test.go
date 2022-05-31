@@ -17,7 +17,7 @@ func Test_memoryStorage_Store(t *testing.T) {
 		url     string
 		addedBy string
 	}
-	store := New(Memory, ConnectInfo{})
+	store := NewMemoryStorage()
 	tests := []struct {
 		name         string
 		args         args

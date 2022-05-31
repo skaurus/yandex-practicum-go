@@ -30,10 +30,7 @@ To stop seeing this message and start - move that file somewhere
 	if err != nil {
 		return nil, err
 	}
-	// file.Close() структуры делается в методе Close() самой структуры,
-	// см. ниже; даже если file.Close() забыть, эта структура выходит
-	// из зоны видимости только при шатдауне сервера, вроде не страшно.
-	//defer file.Close()
+	defer file.Close()
 
 	s := &fileStorage{
 		file:    file,
@@ -110,9 +107,6 @@ func (s fileStorage) createBackupFile(path string) (*os.File, error) {
 
 func (s fileStorage) Close() error {
 	newFile, err := s.createBackupFile(s.file.Name() + ".new")
-	if err == nil {
-		err = s.file.Close()
-	}
 	if err != nil {
 		// TODO: не уверен, что будет если тут просто вернуть ошибку; хочется
 		// TODO: быть уверенным в том, что это точно заметят. так - шансы выше
