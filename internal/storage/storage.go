@@ -1,21 +1,14 @@
 package storage
 
+import (
+	"github.com/skaurus/yandex-practicum-go/internal/config"
+)
+
 type Storage interface {
 	Store(string, string) int
 	GetByID(int) (string, bool)
 	GetAllIDsFromUser(string) []int
 	Close() error
-}
-
-type storageType int
-
-const (
-	Memory storageType = iota + 1
-	File
-)
-
-type ConnectInfo struct {
-	Filename string
 }
 
 // New - в декларации метода указано, что он возвращает тип Storage;
@@ -25,17 +18,14 @@ type ConnectInfo struct {
 // декларации, компилятор будет ругаться, что мы возвращаем не тот тип:
 // cannot use ... (type *memoryStorage) as the type *Storage
 // TODO: Как быть?
-func New(typ storageType, ci ConnectInfo) Storage {
-	switch typ {
-	case Memory:
-		return &memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
-	case File:
-		storage, err := NewFileStorage(ci.Filename)
+func New(config *config.Config) Storage {
+	if len(config.StorageFileName) > 0 {
+		storage, err := NewFileStorage(config.StorageFileName)
 		if err != nil {
 			panic(err)
 		}
 		return storage
-	default:
-		panic("unacceptable!")
+	} else {
+		return NewMemoryStorage()
 	}
 }

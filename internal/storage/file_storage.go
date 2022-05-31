@@ -95,7 +95,7 @@ To stop seeing this message and start - move that file somewhere
 		// переиспользуем код хранилища данных в памяти, чтобы хранить
 		// распаршенный файл, что без всяких накладных расходов даёт
 		// удобный, совместимый интерфейс
-		memoryStorage: *New(Memory, ConnectInfo{}).(*memoryStorage),
+		memoryStorage: *NewMemoryStorage(),
 	}
 	s.encoder.SetEscapeHTML(false)
 

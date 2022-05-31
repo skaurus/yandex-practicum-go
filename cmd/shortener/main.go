@@ -24,17 +24,8 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	config := config.ParseConfig()
-
-	var store storage.Storage
-	if len(config.StorageFileName) > 0 {
-		storageConnectInfo := storage.ConnectInfo{
-			Filename: config.StorageFileName,
-		}
-		store = storage.New(storage.File, storageConnectInfo)
-		defer store.Close()
-	} else {
-		store = storage.New(storage.Memory, storage.ConnectInfo{})
-	}
+	store := storage.New(config)
+	defer store.Close()
 
 	router := app.SetupRouter(config, &store)
 	srv := &http.Server{

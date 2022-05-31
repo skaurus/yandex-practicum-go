@@ -17,6 +17,10 @@ func IntPtr(x int) *int {
 	return &x
 }
 
+func NewMemoryStorage() *memoryStorage {
+	return &memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
+}
+
 func (s memoryStorage) Store(u string, by string) int {
 	*s.counter++
 	s.idToURLs[*s.counter] = u
