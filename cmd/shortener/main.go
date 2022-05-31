@@ -24,6 +24,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	config := config.ParseConfig()
+	defer config.LogFile.Close()
 	store := storage.New(config)
 	defer store.Close()
 

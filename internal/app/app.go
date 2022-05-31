@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/skaurus/yandex-practicum-go/internal/config"
@@ -194,16 +193,10 @@ func SetCookies(c *gin.Context) {
 
 func SetupRouter(config *config.Config, storage *storage.Storage) *gin.Engine {
 	gin.DisableConsoleColor()
-	f, _ := os.OpenFile(config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	gin.DefaultWriter = io.MultiWriter(f)
-
-	zerolog.SetGlobalLevel(config.LogLevel)
-	// TODO: сделать так, чтобы zerolog всегда писал в файл; не только когда
-	// TODO: мы берём этот объект, но и просто при вызове log где угодно
-	logger := zerolog.New(f).With().Timestamp().Logger()
+	gin.DefaultWriter = io.MultiWriter(config.LogFile)
 
 	router := gin.Default()
-	router.Use(SetGlobalVars(config, storage, &logger))
+	router.Use(SetGlobalVars(config, storage, config.Logger))
 	router.Use(GzipCompression)
 	router.Use(SetCookies)
 

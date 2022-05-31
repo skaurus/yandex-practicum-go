@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"net/url"
+	"os"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/rs/zerolog"
@@ -22,7 +23,8 @@ const (
 type Config struct {
 	ServerAddr      string `env:"SERVER_ADDRESS"`
 	LogName         string `env:"LOG_NAME"`
-	LogLevel        zerolog.Level
+	LogFile         *os.File
+	Logger          *zerolog.Logger
 	BaseAddr        string `env:"BASE_URL"`
 	BaseURI         *url.URL
 	StorageFileName string `env:"FILE_STORAGE_PATH"`
@@ -59,7 +61,15 @@ func ParseConfig() *Config {
 	if len(config.LogName) == 0 {
 		config.LogName = DefaultLogName
 	}
-	config.LogLevel = zerolog.ErrorLevel
+	config.LogFile, err = os.OpenFile(config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		panic(err)
+	}
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	// TODO: сделать так, чтобы zerolog всегда писал в файл; не только когда
+	// TODO: мы берём этот объект, но и просто при вызове log где угодно
+	logger := zerolog.New(config.LogFile).With().Timestamp().Logger()
+	config.Logger = &logger
 
 	if len(config.BaseAddr) == 0 {
 		if len(flagBaseAddr) > 0 {
