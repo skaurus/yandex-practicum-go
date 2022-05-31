@@ -105,7 +105,7 @@ func GetAllUserURLs(c *gin.Context) {
 
 	ids := (*storage).GetAllIDsFromUser(uniq)
 
-	answer := make(allUserURLs, len(ids))
+	answer := make(allUserURLs, 0, len(ids))
 	for _, id := range ids {
 		originalURL, ok := (*storage).GetByID(id)
 		if !ok {
