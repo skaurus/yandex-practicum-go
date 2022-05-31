@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	"github.com/rs/zerolog"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,7 +15,6 @@ import (
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
-	//jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -121,4 +123,28 @@ func GetAllUserURLs(c *gin.Context) {
 		return
 	}
 	c.PureJSON(http.StatusOK, answer)
+}
+
+func Ping(c *gin.Context) {
+	config := c.MustGet("config").(*config.Config)
+	logger := c.MustGet("logger").(*zerolog.Logger)
+
+	// Это вынесено отдельно, потому что с пустой строкой драйвер всё равно
+	// пытается подключиться, с параметрами по умолчанию (текущий юзер,
+	// база = текущему юзеру, без пароля), обламывается, и светит в логи юзера
+	if len(config.DBConnectString) == 0 {
+		logger.Error().Msg("no db connection string was provided, nothing to ping")
+		c.String(http.StatusInternalServerError, "")
+		return
+	}
+
+	conn, err := pgx.Connect(context.Background(), config.DBConnectString)
+	if err != nil {
+		logger.Error().Err(err).Send()
+		c.String(http.StatusInternalServerError, "")
+		return
+	}
+	defer conn.Close(context.Background())
+
+	c.String(http.StatusOK, "")
 }

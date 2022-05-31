@@ -27,6 +27,8 @@ type Config struct {
 	BaseURI         *url.URL
 	StorageFileName string `env:"FILE_STORAGE_PATH"`
 	CookieDomain    string `env:"COOKIE_DOMAIN"`
+	// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+	DBConnectString string `env:"DATABASE_DSN"`
 }
 
 func ParseConfig() *Config {
@@ -36,11 +38,12 @@ func ParseConfig() *Config {
 		panic(err)
 	}
 
-	var flagServerAddr, flagBaseAddr, flagCookieDomain, flagStorageFileName string
+	var flagServerAddr, flagBaseAddr, flagCookieDomain, flagStorageFileName, flagDBConnectString string
 	flag.StringVar(&flagServerAddr, "a", DefaultServerAddr, "host:port to listen on")
 	flag.StringVar(&flagBaseAddr, "b", DefaultBaseAddr, "base addr for shortened urls")
-	flag.StringVar(&flagCookieDomain, "d", DefaultCookieDomain, "cookie domain")
+	flag.StringVar(&flagCookieDomain, "cd", DefaultCookieDomain, "cookie domain")
 	flag.StringVar(&flagStorageFileName, "f", "", "filepath to store shortened urls")
+	flag.StringVar(&flagDBConnectString, "d", "", "db connect string")
 	flag.Parse()
 
 	// приоритет ENV перед флагами сконструирован руками, в каждом из присвоений
@@ -69,6 +72,7 @@ func ParseConfig() *Config {
 	if err != nil {
 		panic(err)
 	}
+
 	if len(config.StorageFileName) == 0 {
 		if len(flagStorageFileName) > 0 {
 			config.StorageFileName = flagStorageFileName
@@ -80,6 +84,12 @@ func ParseConfig() *Config {
 			config.CookieDomain = flagCookieDomain
 		} else {
 			config.CookieDomain = DefaultCookieDomain
+		}
+	}
+
+	if len(config.DBConnectString) == 0 {
+		if len(flagDBConnectString) > 0 {
+			config.DBConnectString = flagDBConnectString
 		}
 	}
 
