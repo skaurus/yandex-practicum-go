@@ -19,7 +19,13 @@ type Storage interface {
 // cannot use ... (type *memoryStorage) as the type *Storage
 // TODO: Как быть?
 func New(config *config.Config) Storage {
-	if len(config.StorageFileName) > 0 {
+	if len(config.DBConnectString) > 0 {
+		storage, err := NewDBStorage(config.DBConnectString)
+		if err != nil {
+			panic(err)
+		}
+		return storage
+	} else if len(config.StorageFileName) > 0 {
 		storage, err := NewFileStorage(config.StorageFileName)
 		if err != nil {
 			panic(err)
