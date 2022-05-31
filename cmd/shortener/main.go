@@ -49,7 +49,7 @@ func main() {
 	}()
 
 	sig := <-sigCh
-	log.Error().Msgf("got signal %s, exiting\n", sig)
+	log.Info().Msgf("got signal %s, exiting\n", sig)
 	close(sigCh)
 	// когда сработает cancel - Shutdown выполнится принудительно, даже если
 	// сервер ещё не дождался завершения всех запросов
@@ -60,5 +60,5 @@ func main() {
 		log.Fatal().Err(err).Msg("can't shutdown the server")
 	}
 
-	log.Error().Msg("exited")
+	log.Info().Msg("exited")
 }
