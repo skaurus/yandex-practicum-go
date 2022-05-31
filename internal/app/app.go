@@ -198,6 +198,8 @@ func SetupRouter(config *config.Config, storage *storage.Storage) *gin.Engine {
 	gin.DefaultWriter = io.MultiWriter(f)
 
 	zerolog.SetGlobalLevel(config.LogLevel)
+	// TODO: сделать так, чтобы zerolog всегда писал в файл; не только когда
+	// TODO: мы берём этот объект, но и просто при вызове log где угодно
 	logger := zerolog.New(f).With().Timestamp().Logger()
 
 	router := gin.Default()
