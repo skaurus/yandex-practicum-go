@@ -122,7 +122,7 @@ func GetAllUserURLs(c *gin.Context) {
 	config := c.MustGet("config").(*configpkg.Config)
 	uniq := c.MustGet("uniq").(string)
 
-	ids, err := (*storage).GetAllIDsFromUser(uniq)
+	rows, err := (*storage).GetAllUserUrls(uniq)
 	if err != nil {
 		if errors.Is(err, storagepkg.ErrNotFound) {
 			c.String(http.StatusBadRequest, "no urls found for current user")
@@ -132,20 +132,11 @@ func GetAllUserURLs(c *gin.Context) {
 		return
 	}
 
-	answer := make(allUserURLs, 0, len(ids))
-	for _, id := range ids {
-		originalURL, err := (*storage).GetByID(id)
-		if err != nil {
-			if err.Error() == utils.StorageErrNotFound {
-				continue
-			} else {
-				c.String(http.StatusBadRequest, err.Error())
-				return
-			}
-		}
+	answer := make(allUserURLs, 0, len(rows))
+	for _, row := range rows {
 		answer = append(answer, userURLRow{
-			ShortURL:    createRedirectURL(config.BaseURI, id),
-			OriginalURL: originalURL,
+			ShortURL:    createRedirectURL(config.BaseURI, row.ID),
+			OriginalURL: row.OriginalURL,
 		})
 	}
 

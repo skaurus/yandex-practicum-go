@@ -9,7 +9,7 @@ import (
 type Storage interface {
 	Store(string, string) (int, error)
 	GetByID(int) (string, error)
-	GetAllIDsFromUser(string) ([]int, error)
+	GetAllUserUrls(string) (shortenedURLs, error)
 	Close() error
 }
 

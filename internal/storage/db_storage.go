@@ -86,20 +86,31 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 	return originalURL, err
 }
 
-func (db *dbStorage) GetAllIDsFromUser(by string) ([]int, error) {
-	var ids []int
+func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	row := db.handle.QueryRow(
+	rows, err := db.handle.Query(
 		ctx,
-		"SELECT array_agg(id) FROM urls WHERE added_by = ?",
+		"SELECT id, original_url FROM urls WHERE added_by = ?",
 		by,
 	)
-	err := row.Scan(&ids)
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		err = errors.New(utils.StorageErrNotFound)
+	cancel()
+
+	var answer shortenedURLs
+	var id int
+	var originalUrl string
+	for rows.Next() {
+		err := rows.Scan(&id, &originalUrl)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				err = ErrNotFound
+			}
+			return nil, err
+		}
+		answer = append(answer, shortenedURL{id, originalUrl, by})
 	}
-	return ids, err
+
+	return answer, err
 }
 
 func (db *dbStorage) Close() error {
