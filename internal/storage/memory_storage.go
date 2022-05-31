@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"errors"
-
-	"github.com/skaurus/yandex-practicum-go/internal/utils"
+	"bytes"
+	"encoding/json"
+	"fmt"
 )
 
 type memoryStorage struct {
@@ -36,11 +36,10 @@ func (s memoryStorage) Store(u string, by string) (int, error) {
 
 func (s memoryStorage) GetByID(id int) (string, error) {
 	url, ok := s.idToURLs[id]
-	var err error
 	if !ok {
-		err = errors.New(utils.StorageErrNotFound)
+		return "", ErrNotFound
 	}
-	return url, err
+	return url, nil
 }
 
 func (s memoryStorage) GetAllIDsFromUser(by string) ([]int, error) {

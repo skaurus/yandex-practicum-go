@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+
 	"github.com/skaurus/yandex-practicum-go/internal/config"
 )
 
@@ -10,6 +12,8 @@ type Storage interface {
 	GetAllIDsFromUser(string) ([]int, error)
 	Close() error
 }
+
+var ErrNotFound = errors.New("not found")
 
 // New - в декларации метода указано, что он возвращает тип Storage;
 // при этом значения, которые возвращает return - это на самом деле ссылки;

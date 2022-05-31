@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/skaurus/yandex-practicum-go/internal/config"
-	"github.com/skaurus/yandex-practicum-go/internal/storage"
+	configpkg "github.com/skaurus/yandex-practicum-go/internal/config"
+	storagepkg "github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"gotest.tools/v3/assert"
 )
@@ -22,8 +22,8 @@ const (
 )
 
 func TestRoutes(t *testing.T) {
-	storage := storage.New(storage.Memory, storage.ConnectInfo{})
-	config := config.ParseConfig()
+	config := configpkg.ParseConfig()
+	storage := storagepkg.Storage(storagepkg.NewMemoryStorage())
 	router := SetupRouter(config, &storage)
 
 	configWithAnotherBase := *config

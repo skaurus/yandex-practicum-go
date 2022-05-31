@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/skaurus/yandex-practicum-go/internal/utils"
-
 	"github.com/jackc/pgx/v4"
 )
 
@@ -83,7 +81,7 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 	)
 	err := row.Scan(&originalURL)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		err = errors.New(utils.StorageErrNotFound)
+		err = ErrNotFound
 	}
 	return originalURL, err
 }

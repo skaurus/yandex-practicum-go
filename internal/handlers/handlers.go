@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/rs/zerolog"
@@ -11,9 +12,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/skaurus/yandex-practicum-go/internal/config"
-	"github.com/skaurus/yandex-practicum-go/internal/storage"
-	"github.com/skaurus/yandex-practicum-go/internal/utils"
+	configpkg "github.com/skaurus/yandex-practicum-go/internal/config"
+	storagepkg "github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,8 +28,8 @@ func createRedirectURL(baseURI *url.URL, newID int) string {
 }
 
 func BodyShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(*storage.Storage)
-	config := c.MustGet("config").(*config.Config)
+	storage := c.MustGet("storage").(*storagepkg.Storage)
+	config := c.MustGet("config").(*configpkg.Config)
 	uniq := c.MustGet("uniq").(string)
 
 	body, err := io.ReadAll(c.Request.Body)
@@ -56,8 +56,8 @@ type APIRequest struct {
 }
 
 func APIShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(*storage.Storage)
-	config := c.MustGet("config").(*config.Config)
+	storage := c.MustGet("storage").(*storagepkg.Storage)
+	config := c.MustGet("config").(*configpkg.Config)
 	uniq := c.MustGet("uniq").(string)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
@@ -89,7 +89,7 @@ func APIShorten(c *gin.Context) {
 }
 
 func Redirect(c *gin.Context) {
-	storage := c.MustGet("storage").(*storage.Storage)
+	storage := c.MustGet("storage").(*storagepkg.Storage)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -99,7 +99,7 @@ func Redirect(c *gin.Context) {
 
 	originalURL, err := (*storage).GetByID(id)
 	if err != nil {
-		if err.Error() == utils.StorageErrNotFound {
+		if errors.Is(err, storagepkg.ErrNotFound) {
 			c.String(http.StatusBadRequest, "wrong id")
 		} else {
 			c.String(http.StatusBadRequest, err.Error())
@@ -118,13 +118,13 @@ type userURLRow struct {
 type allUserURLs []userURLRow
 
 func GetAllUserURLs(c *gin.Context) {
-	storage := c.MustGet("storage").(*storage.Storage)
-	config := c.MustGet("config").(*config.Config)
+	storage := c.MustGet("storage").(*storagepkg.Storage)
+	config := c.MustGet("config").(*configpkg.Config)
 	uniq := c.MustGet("uniq").(string)
 
 	ids, err := (*storage).GetAllIDsFromUser(uniq)
 	if err != nil {
-		if err.Error() == utils.StorageErrNotFound {
+		if errors.Is(err, storagepkg.ErrNotFound) {
 			c.String(http.StatusBadRequest, "no urls found for current user")
 		} else {
 			c.String(http.StatusBadRequest, err.Error())
@@ -157,7 +157,7 @@ func GetAllUserURLs(c *gin.Context) {
 }
 
 func Ping(c *gin.Context) {
-	config := c.MustGet("config").(*config.Config)
+	config := c.MustGet("config").(*configpkg.Config)
 	logger := c.MustGet("logger").(*zerolog.Logger)
 
 	// Это вынесено отдельно, потому что с пустой строкой драйвер всё равно

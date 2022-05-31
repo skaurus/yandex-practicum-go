@@ -37,7 +37,8 @@ func Test_memoryStorage_Store(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := store.Store(tt.args.url, tt.args.addedBy)
+			got, err := store.Store(tt.args.url, tt.args.addedBy)
+			assert.NilError(t, err)
 			assert.Equal(t, tt.wantedValue, got)
 			// AllowUnexported не упоминается в документации пакета gotest.tools,
 			// но удалось нагуглить решение по тексту ошибки
@@ -56,20 +57,24 @@ func Test_memoryStorage_GetByID(t *testing.T) {
 		map[string][]int{"skaurus": {1, 2}},
 	}
 	tests := []struct {
-		name  string
-		args  args
-		want1 string
-		want2 bool
+		name string
+		args args
+		want string
+		err  error
 	}{
-		{"can unshorten url", args{1}, YA, true},
-		{"can unshorten url", args{2}, Google, true},
-		{"can't unshorten what is not there", args{3}, "", false},
+		{"can unshorten url", args{1}, YA, nil},
+		{"can unshorten url", args{2}, Google, nil},
+		{"can't unshorten what is not there", args{3}, "", ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got1, got2 := store.GetByID(tt.args.id)
-			assert.Equal(t, tt.want1, got1)
-			assert.Equal(t, tt.want2, got2)
+			got, err := store.GetByID(tt.args.id)
+			if tt.err == nil {
+				assert.NilError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.err)
+			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
