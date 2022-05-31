@@ -24,7 +24,7 @@ var ErrNotFound = errors.New("not found")
 // TODO: Как быть?
 func New(config *config.Config) Storage {
 	if len(config.DBConnectString) > 0 {
-		storage, err := NewDBStorage(config.DBConnectString)
+		storage, err := NewDBStorage(config)
 		if err != nil {
 			panic(err)
 		}

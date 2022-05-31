@@ -5,22 +5,31 @@ import (
 	"errors"
 	"time"
 
+	"github.com/skaurus/yandex-practicum-go/internal/config"
+
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/log/zerologadapter"
 )
 
 type dbStorage struct {
 	handle *pgx.Conn
 }
 
-func NewDBStorage(connString string) (*dbStorage, error) {
+func NewDBStorage(config *config.Config) (*dbStorage, error) {
+	connConfig, err := pgx.ParseConfig(config.DBConnectString)
+	if err != nil {
+		return nil, err
+	}
+	connConfig.Logger = zerologadapter.NewLogger(*config.Logger)
+	//connConfig.LogLevel = pgx.LogLevelError // можно использовать для дебага
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	conn, err := pgx.Connect(ctx, connString)
+	conn, err := pgx.ConnectConfig(ctx, connConfig)
 	if err != nil {
 		return nil, err
 	}
 	cancel()
-	defer conn.Close(context.Background())
 
 	db := &dbStorage{conn}
 

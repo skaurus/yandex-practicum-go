@@ -30,20 +30,24 @@ func createRedirectURL(baseURI *url.URL, newID int) string {
 func BodyShorten(c *gin.Context) {
 	storage := c.MustGet("storage").(*storagepkg.Storage)
 	config := c.MustGet("config").(*configpkg.Config)
+	logger := c.MustGet("logger").(*zerolog.Logger)
 	uniq := c.MustGet("uniq").(string)
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		logger.Error().Err(err).Msg("can't read request body")
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	if len(body) == 0 {
+		logger.Warn().Msg("empty body")
 		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
 	newID, err := (*storage).Store(string(body), uniq)
 	if err != nil {
+		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", string(body), uniq)
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -58,6 +62,7 @@ type APIRequest struct {
 func APIShorten(c *gin.Context) {
 	storage := c.MustGet("storage").(*storagepkg.Storage)
 	config := c.MustGet("config").(*configpkg.Config)
+	logger := c.MustGet("logger").(*zerolog.Logger)
 	uniq := c.MustGet("uniq").(string)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
@@ -65,22 +70,26 @@ func APIShorten(c *gin.Context) {
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		logger.Error().Err(err).Msg("can't read request body")
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 	var data APIRequest
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		logger.Error().Err(err).Msg("can't parse body")
 		c.String(http.StatusBadRequest, "can't parse json")
 		return
 	}
 	if len(data.URL) == 0 {
+		logger.Warn().Msg("empty url")
 		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
 	newID, err := (*storage).Store(data.URL, uniq)
 	if err != nil {
+		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data.URL, uniq)
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -90,9 +99,11 @@ func APIShorten(c *gin.Context) {
 
 func Redirect(c *gin.Context) {
 	storage := c.MustGet("storage").(*storagepkg.Storage)
+	logger := c.MustGet("logger").(*zerolog.Logger)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
+		logger.Error().Err(err).Msgf("can't convert [%s] to int", c.Param("id"))
 		c.String(http.StatusBadRequest, "wrong id")
 		return
 	}
@@ -100,8 +111,10 @@ func Redirect(c *gin.Context) {
 	originalURL, err := (*storage).GetByID(id)
 	if err != nil {
 		if errors.Is(err, storagepkg.ErrNotFound) {
+			logger.Warn().Msgf("can't find id [%d]", id)
 			c.String(http.StatusBadRequest, "wrong id")
 		} else {
+			logger.Error().Err(err).Msgf("can't find id [%d]", id)
 			c.String(http.StatusBadRequest, err.Error())
 		}
 		return
@@ -120,13 +133,16 @@ type allUserURLs []userURLRow
 func GetAllUserURLs(c *gin.Context) {
 	storage := c.MustGet("storage").(*storagepkg.Storage)
 	config := c.MustGet("config").(*configpkg.Config)
+	logger := c.MustGet("logger").(*zerolog.Logger)
 	uniq := c.MustGet("uniq").(string)
 
 	rows, err := (*storage).GetAllUserUrls(uniq)
 	if err != nil {
 		if errors.Is(err, storagepkg.ErrNotFound) {
+			logger.Warn().Msgf("can't find urls for user [%s]", uniq)
 			c.String(http.StatusBadRequest, "no urls found for current user")
 		} else {
+			logger.Error().Err(err).Msgf("can't find urls for user [%s]", uniq)
 			c.String(http.StatusBadRequest, err.Error())
 		}
 		return
