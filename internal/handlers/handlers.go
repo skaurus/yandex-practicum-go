@@ -139,13 +139,13 @@ func GetAllUserURLs(c *gin.Context) {
 	rows, err := (*storage).GetAllUserUrls(uniq)
 	if err != nil {
 		if errors.Is(err, storagepkg.ErrNotFound) {
+			// это валидный кейс, просто ответим 204
 			logger.Warn().Msgf("can't find urls for user [%s]", uniq)
-			c.String(http.StatusBadRequest, "no urls found for current user")
 		} else {
 			logger.Error().Err(err).Msgf("can't find urls for user [%s]", uniq)
 			c.String(http.StatusBadRequest, err.Error())
+			return
 		}
-		return
 	}
 
 	answer := make(allUserURLs, 0, len(rows))
