@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	configpkg "github.com/skaurus/yandex-practicum-go/internal/config"
-	storagepkg "github.com/skaurus/yandex-practicum-go/internal/storage"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
+	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"gotest.tools/v3/assert"
 )
@@ -22,15 +22,18 @@ const (
 )
 
 func TestRoutes(t *testing.T) {
-	config := configpkg.ParseConfig()
-	storage := storagepkg.Storage(storagepkg.NewMemoryStorage())
-	router := SetupRouter(config, &storage)
+	env, err := env.New()
+	if err != nil {
+		panic(err)
+	}
+	store := storage.Storage(storage.NewMemoryStorage())
+	router := SetupRouter(env, &store)
 
-	configWithAnotherBase := *config
-	configWithAnotherBase.BaseAddr = "https://ya.us/s/" // yet another url shortener
-	configWithAnotherBase.BaseURI, _ = url.Parse(configWithAnotherBase.BaseAddr)
+	envWithAnotherBase := *env
+	envWithAnotherBase.Config.BaseAddr = "https://ya.us/s/" // yet another url shortener
+	envWithAnotherBase.BaseURI, _ = url.Parse(envWithAnotherBase.Config.BaseAddr)
 
-	routerWithAnotherBase := SetupRouter(&configWithAnotherBase, &storage)
+	routerWithAnotherBase := SetupRouter(&envWithAnotherBase, &store)
 	originalRouter := router
 
 	type want struct {

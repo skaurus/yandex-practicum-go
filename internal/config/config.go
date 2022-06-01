@@ -2,11 +2,7 @@ package config
 
 import (
 	"flag"
-	"net/url"
-	"os"
-
 	"github.com/caarlos0/env/v6"
-	"github.com/rs/zerolog"
 )
 
 // напрашивается переделать на hostname + port, потому что сейчас нужно
@@ -23,14 +19,12 @@ const (
 type Config struct {
 	ServerAddr      string `env:"SERVER_ADDRESS"`
 	LogName         string `env:"LOG_NAME"`
-	LogFile         *os.File
-	Logger          *zerolog.Logger
 	BaseAddr        string `env:"BASE_URL"`
-	BaseURI         *url.URL
 	StorageFileName string `env:"FILE_STORAGE_PATH"`
 	CookieDomain    string `env:"COOKIE_DOMAIN"`
 	// https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
-	DBConnectString string `env:"DATABASE_DSN"`
+	DBConnectString  string `env:"DATABASE_DSN"`
+	DBConnectTimeout int    `env:"DATABASE_CONNECT_TIMEOUT"` // в секундах, дефолт - 1
 }
 
 func ParseConfig() *Config {
@@ -61,15 +55,6 @@ func ParseConfig() *Config {
 	if len(config.LogName) == 0 {
 		config.LogName = DefaultLogName
 	}
-	config.LogFile, err = os.OpenFile(config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		panic(err)
-	}
-	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	// TODO: сделать так, чтобы zerolog всегда писал в файл; не только когда
-	// TODO: мы берём этот объект, но и просто при вызове log где угодно
-	logger := zerolog.New(config.LogFile).With().Timestamp().Logger()
-	config.Logger = &logger
 
 	if len(config.BaseAddr) == 0 {
 		if len(flagBaseAddr) > 0 {
@@ -77,10 +62,6 @@ func ParseConfig() *Config {
 		} else {
 			config.BaseAddr = DefaultBaseAddr
 		}
-	}
-	config.BaseURI, err = url.Parse(config.BaseAddr)
-	if err != nil {
-		panic(err)
 	}
 
 	if len(config.StorageFileName) == 0 {
@@ -101,6 +82,13 @@ func ParseConfig() *Config {
 		if len(flagDBConnectString) > 0 {
 			config.DBConnectString = flagDBConnectString
 		}
+	}
+	// вообще-то для постгреса значение "0" означает, что таймаут отключен;
+	// но нам как-то надо же проставлять дефолтное значение, которое 1 (делать
+	// дефолтом 0 было бы нехорошо, дефолты должны быть разумны).
+	// если правда нужно отключить таймаут - то отрицательное значение подойдёт
+	if config.DBConnectTimeout == 0 {
+		config.DBConnectTimeout = 1
 	}
 
 	return &config

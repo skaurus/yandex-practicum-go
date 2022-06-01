@@ -27,14 +27,14 @@ func NewMemoryStorage() *memoryStorage {
 	return &memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
 }
 
-func (s memoryStorage) Store(u string, by string) (int, error) {
+func (s *memoryStorage) Store(u string, by string) (int, error) {
 	*s.counter++
 	s.idToURLs[*s.counter] = u
 	s.userToIDs[by] = append(s.userToIDs[by], *s.counter)
 	return *s.counter, nil
 }
 
-func (s memoryStorage) GetByID(id int) (string, error) {
+func (s *memoryStorage) GetByID(id int) (string, error) {
 	url, ok := s.idToURLs[id]
 	if !ok {
 		return "", ErrNotFound
@@ -96,7 +96,7 @@ func (s *shortenedURL) UnmarshalJSON(buf []byte) error {
 
 // 2. также, самонадеянно выглядит отсутствие error в ответе. возможна ли она тут и
 // что вообще ей считать - хороший вопрос, оставшийся за скобками
-func (s memoryStorage) memoryToRows() *shortenedURLs {
+func (s *memoryStorage) memoryToRows() *shortenedURLs {
 	// понятно, что скорее всего такой длины не хватит, но как стартовая точка...
 	rows := make(shortenedURLs, 0, len(s.userToIDs))
 	for user, ids := range s.userToIDs {
@@ -110,7 +110,7 @@ func (s memoryStorage) memoryToRows() *shortenedURLs {
 	return &rows
 }
 
-func (s memoryStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
+func (s *memoryStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	ids, ok := s.userToIDs[by]
 	if !ok {
 		return nil, ErrNotFound
@@ -129,6 +129,6 @@ func (s memoryStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	return answer, err
 }
 
-func (s memoryStorage) Close() error {
+func (s *memoryStorage) Close() error {
 	return nil
 }

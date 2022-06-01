@@ -2,8 +2,7 @@ package storage
 
 import (
 	"errors"
-
-	"github.com/skaurus/yandex-practicum-go/internal/config"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
 )
 
 type Storage interface {
@@ -22,15 +21,15 @@ var ErrNotFound = errors.New("not found")
 // декларации, компилятор будет ругаться, что мы возвращаем не тот тип:
 // cannot use ... (type *memoryStorage) as the type *Storage
 // TODO: Как быть?
-func New(config *config.Config) Storage {
-	if len(config.DBConnectString) > 0 {
-		storage, err := NewDBStorage(config)
+func New(env *env.Environment) Storage {
+	if len(env.Config.DBConnectString) > 0 {
+		storage, err := NewDBStorage(env)
 		if err != nil {
 			panic(err)
 		}
 		return storage
-	} else if len(config.StorageFileName) > 0 {
-		storage, err := NewFileStorage(config.StorageFileName)
+	} else if len(env.Config.StorageFileName) > 0 {
+		storage, err := NewFileStorage(env)
 		if err != nil {
 			panic(err)
 		}

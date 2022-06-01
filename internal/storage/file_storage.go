@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
 	"io"
 	"os"
 )
@@ -14,7 +15,8 @@ type fileStorage struct {
 	memoryStorage // распаршенное содержимое файла
 }
 
-func NewFileStorage(filename string) (*fileStorage, error) {
+func NewFileStorage(env *env.Environment) (*fileStorage, error) {
+	filename := env.Config.StorageFileName
 	// проверка консистентности перед стартом
 	_, err := os.OpenFile(filename+".new", os.O_RDONLY, 0644)
 	if err == nil {
@@ -62,26 +64,26 @@ To stop seeing this message and start - move that file somewhere
 	return s, nil
 }
 
-func (s fileStorage) Store(u string, by string) (int, error) {
+func (s *fileStorage) Store(u string, by string) (int, error) {
 	// переиспользуем апи, имеем всегда актуальное состояние базы в памяти
 	return s.memoryStorage.Store(u, by)
 }
 
-// TODO: поискать, можно ли как-то без бойлерплейта сказать коду все
+// TODO: Поискать, можно ли как-то без бойлерплейта сказать коду все
 // TODO: "неопределённые" методы пробовать искать в своём поле memoryStorage.
 // TODO: То есть что-то вроде объявления наследования
-func (s fileStorage) GetByID(id int) (string, error) {
+func (s *fileStorage) GetByID(id int) (string, error) {
 	return s.memoryStorage.GetByID(id)
 }
 
-func (s fileStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
+func (s *fileStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	return s.memoryStorage.GetAllUserUrls(by)
 }
 
 // createBackupFile создаёт файл с дампом текущего состояния хранилища
 // сохранённых в памяти урлов. Подмену старого дампа новым сделаем, только если
 // всё закончится успешно.
-func (s fileStorage) createBackupFile(path string) (*os.File, error) {
+func (s *fileStorage) createBackupFile(path string) (*os.File, error) {
 	// Сочетание флагов os.O_CREATE|os.O_EXCL требует, чтобы файла не было - а
 	// быть он может, только если прошлое сохранение на диск завершилось ошибкой.
 	// В таком случае лучше не будем ничего делать, пока оператор не отреагирует.
@@ -105,7 +107,7 @@ func (s fileStorage) createBackupFile(path string) (*os.File, error) {
 	return file, file.Sync()
 }
 
-func (s fileStorage) Close() error {
+func (s *fileStorage) Close() error {
 	newFile, err := s.createBackupFile(s.file.Name() + ".new")
 	if err != nil {
 		// TODO: не уверен, что будет если тут просто вернуть ошибку; хочется

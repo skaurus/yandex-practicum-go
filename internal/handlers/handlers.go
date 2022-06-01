@@ -1,19 +1,16 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/rs/zerolog"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 
-	configpkg "github.com/skaurus/yandex-practicum-go/internal/config"
-	storagepkg "github.com/skaurus/yandex-practicum-go/internal/storage"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
+	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,9 +25,9 @@ func createRedirectURL(baseURI *url.URL, newID int) string {
 }
 
 func BodyShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(*storagepkg.Storage)
-	config := c.MustGet("config").(*configpkg.Config)
-	logger := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
+	store := c.MustGet("storage").(*storage.Storage)
 	uniq := c.MustGet("uniq").(string)
 
 	body, err := io.ReadAll(c.Request.Body)
@@ -45,14 +42,14 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*storage).Store(string(body), uniq)
+	newID, err := (*store).Store(string(body), uniq)
 	if err != nil {
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", string(body), uniq)
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.String(http.StatusCreated, createRedirectURL(config.BaseURI, newID))
+	c.String(http.StatusCreated, createRedirectURL(env.BaseURI, newID))
 }
 
 type APIRequest struct {
@@ -60,9 +57,9 @@ type APIRequest struct {
 }
 
 func APIShorten(c *gin.Context) {
-	storage := c.MustGet("storage").(*storagepkg.Storage)
-	config := c.MustGet("config").(*configpkg.Config)
-	logger := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
+	store := c.MustGet("storage").(*storage.Storage)
 	uniq := c.MustGet("uniq").(string)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
@@ -87,19 +84,20 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*storage).Store(data.URL, uniq)
+	newID, err := (*store).Store(data.URL, uniq)
 	if err != nil {
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data.URL, uniq)
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(config.BaseURI, newID)})
+	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(env.BaseURI, newID)})
 }
 
 func Redirect(c *gin.Context) {
-	storage := c.MustGet("storage").(*storagepkg.Storage)
-	logger := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
+	store := c.MustGet("storage").(*storage.Storage)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -108,9 +106,9 @@ func Redirect(c *gin.Context) {
 		return
 	}
 
-	originalURL, err := (*storage).GetByID(id)
+	originalURL, err := (*store).GetByID(id)
 	if err != nil {
-		if errors.Is(err, storagepkg.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			logger.Warn().Msgf("can't find id [%d]", id)
 			c.String(http.StatusBadRequest, "wrong id")
 		} else {
@@ -131,14 +129,14 @@ type userURLRow struct {
 type allUserURLs []userURLRow
 
 func GetAllUserURLs(c *gin.Context) {
-	storage := c.MustGet("storage").(*storagepkg.Storage)
-	config := c.MustGet("config").(*configpkg.Config)
-	logger := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
+	store := c.MustGet("storage").(*storage.Storage)
 	uniq := c.MustGet("uniq").(string)
 
-	rows, err := (*storage).GetAllUserUrls(uniq)
+	rows, err := (*store).GetAllUserUrls(uniq)
 	if err != nil {
-		if errors.Is(err, storagepkg.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			// это валидный кейс, просто ответим 204
 			logger.Warn().Msgf("can't find urls for user [%s]", uniq)
 		} else {
@@ -151,7 +149,7 @@ func GetAllUserURLs(c *gin.Context) {
 	answer := make(allUserURLs, 0, len(rows))
 	for _, row := range rows {
 		answer = append(answer, userURLRow{
-			ShortURL:    createRedirectURL(config.BaseURI, row.ID),
+			ShortURL:    createRedirectURL(env.BaseURI, row.ID),
 			OriginalURL: row.OriginalURL,
 		})
 	}
@@ -164,25 +162,24 @@ func GetAllUserURLs(c *gin.Context) {
 }
 
 func Ping(c *gin.Context) {
-	config := c.MustGet("config").(*configpkg.Config)
-	logger := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
 
 	// Это вынесено отдельно, потому что с пустой строкой драйвер всё равно
 	// пытается подключиться, с параметрами по умолчанию (текущий юзер,
 	// база = текущему юзеру, без пароля), обламывается, и светит в логи юзера
-	if len(config.DBConnectString) == 0 {
+	if env.DBConn == nil {
 		logger.Error().Msg("no db connection string was provided, nothing to ping")
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
 
-	conn, err := pgx.Connect(context.Background(), config.DBConnectString)
+	err := env.DBConn.Ping(c)
 	if err != nil {
-		logger.Error().Err(err).Send()
+		logger.Error().Err(err).Msg("db ping failed")
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
-	defer conn.Close(context.Background())
 
 	c.String(http.StatusOK, "")
 }

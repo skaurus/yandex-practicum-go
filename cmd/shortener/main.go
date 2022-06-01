@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/skaurus/yandex-practicum-go/internal/app"
-	"github.com/skaurus/yandex-practicum-go/internal/config"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/rs/zerolog/log"
+	"github.com/skaurus/yandex-practicum-go/internal/app"
 )
 
 func main() {
@@ -23,14 +23,17 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	config := config.ParseConfig()
-	defer config.LogFile.Close()
-	store := storage.New(config)
+	env, err := env.New()
+	if err != nil {
+		panic(err)
+	}
+	defer env.LogFile.Close()
+	store := storage.New(env) // как неприятно, что пойнтер нельзя взять здесь же
 	defer store.Close()
 
-	router := app.SetupRouter(config, &store)
+	router := app.SetupRouter(env, &store)
 	srv := &http.Server{
-		Addr:    config.ServerAddr,
+		Addr:    env.Config.ServerAddr,
 		Handler: router,
 	}
 	go func() {
@@ -47,9 +50,9 @@ func main() {
 	// сервер ещё не дождался завершения всех запросов
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := srv.Shutdown(ctx)
+	err = srv.Shutdown(ctx)
 	if err != nil {
-		log.Fatal().Err(err).Msg("can't shutdown the server")
+		log.Fatal().Err(err).Msgf("can't shutdown the server because of %v", err)
 	}
 
 	log.Info().Msg("exited")

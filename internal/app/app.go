@@ -11,20 +11,18 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/skaurus/yandex-practicum-go/internal/config"
+	"github.com/skaurus/yandex-practicum-go/internal/env"
 	"github.com/skaurus/yandex-practicum-go/internal/handlers"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 	"github.com/skaurus/yandex-practicum-go/internal/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 )
 
-func SetGlobalVars(config *config.Config, storage *storage.Storage, logger *zerolog.Logger) gin.HandlerFunc {
+func SetGlobalVars(env *env.Environment, store *storage.Storage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set("config", config)
-		c.Set("storage", storage)
-		c.Set("logger", logger)
+		c.Set("env", env)
+		c.Set("storage", store)
 
 		c.Next()
 	}
@@ -57,7 +55,8 @@ var gzipReader *gzip.Reader
 var gzipWriter *gzip.Writer
 
 func GzipCompression(c *gin.Context) {
-	log := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
 
 	// разжимаем запрос
 	ce := c.GetHeader("Content-Encoding")
@@ -103,7 +102,7 @@ func GzipCompression(c *gin.Context) {
 			var err error
 			gzipWriter, err = gzip.NewWriterLevel(c.Writer, gzip.BestCompression)
 			if err != nil {
-				log.Fatal().Err(err)
+				logger.Fatal().Err(err)
 				break
 			}
 		} else {
@@ -126,8 +125,8 @@ const (
 
 // SetCookies - проставляем/читаем куки
 func SetCookies(c *gin.Context) {
-	config := c.MustGet("config").(*config.Config)
-	log := c.MustGet("logger").(*zerolog.Logger)
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
 
 	var uniq string
 	// блок с несколькими последовательными проверками - это способ не делать
@@ -136,7 +135,7 @@ func SetCookies(c *gin.Context) {
 		// 1. пытаемся прочитать куку уника
 		cookieValue, err := c.Cookie(uniqCookieName)
 		if err != nil { // куки не было
-			log.Info().Msg("no uniq cookie")
+			logger.Info().Msg("no uniq cookie")
 			break
 		}
 
@@ -146,14 +145,14 @@ func SetCookies(c *gin.Context) {
 		parts := strings.SplitN(cookieValue, "-", 2)
 		maybeUniq, sign := parts[0], parts[1]
 		if len(sign) == 0 {
-			log.Error().Msg("uniq cookie don't have separator")
+			logger.Error().Msg("uniq cookie don't have separator")
 			break
 		}
 
 		// 3. пытаемся расшифровать подпись куки уника
 		sign1, err := hex.DecodeString(sign)
 		if err != nil {
-			log.Error().Msg("uniq cookie signature can't be decoded")
+			logger.Error().Msg("uniq cookie signature can't be decoded")
 			break
 		}
 
@@ -161,7 +160,7 @@ func SetCookies(c *gin.Context) {
 		hmacer.Write([]byte(maybeUniq))
 		sign2 := hmacer.Sum(nil)
 		if !hmac.Equal(sign1, sign2) {
-			log.Error().Msg("uniq cookie signature is wrong")
+			logger.Error().Msg("uniq cookie signature is wrong")
 			break
 		}
 
@@ -182,8 +181,11 @@ func SetCookies(c *gin.Context) {
 		hmacer.Write([]byte(uniq))
 		sign := hmacer.Sum(nil)
 		cookieValue := fmt.Sprintf("%s-%s", uniq, hex.EncodeToString(sign))
-		c.SetCookie(uniqCookieName, cookieValue, uniqCookieMaxAge, "/", config.CookieDomain, false, true)
-		log.Info().Msg("set uniq cookie " + cookieValue)
+		c.SetCookie(
+			uniqCookieName, cookieValue, uniqCookieMaxAge, "/",
+			env.Config.CookieDomain, false, true,
+		)
+		logger.Info().Msg("set uniq cookie " + cookieValue)
 	}
 
 	c.Set("uniq", uniq)
@@ -191,12 +193,12 @@ func SetCookies(c *gin.Context) {
 	c.Next()
 }
 
-func SetupRouter(config *config.Config, storage *storage.Storage) *gin.Engine {
+func SetupRouter(env *env.Environment, store *storage.Storage) *gin.Engine {
 	gin.DisableConsoleColor()
-	gin.DefaultWriter = io.MultiWriter(config.LogFile)
+	gin.DefaultWriter = io.MultiWriter(env.LogFile)
 
 	router := gin.Default()
-	router.Use(SetGlobalVars(config, storage, config.Logger))
+	router.Use(SetGlobalVars(env, store))
 	router.Use(GzipCompression)
 	router.Use(SetCookies)
 
