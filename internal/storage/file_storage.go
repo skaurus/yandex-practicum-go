@@ -80,6 +80,10 @@ func (s *fileStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	return s.memoryStorage.GetAllUserUrls(by)
 }
 
+func (s *fileStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
+	return s.memoryStorage.StoreBatch(storeBatchRequest, by)
+}
+
 // createBackupFile создаёт файл с дампом текущего состояния хранилища
 // сохранённых в памяти урлов. Подмену старого дампа новым сделаем, только если
 // всё закончится успешно.

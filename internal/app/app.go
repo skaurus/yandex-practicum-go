@@ -205,6 +205,7 @@ func SetupRouter(env *env.Environment, store *storage.Storage) *gin.Engine {
 	router.POST("/", handlers.BodyShorten)
 	router.GET("/:id", handlers.Redirect)
 	router.POST("/api/shorten", handlers.APIShorten)
+	router.POST("/api/shorten/batch", handlers.APIShortenBatch)
 	router.GET("/api/user/urls", handlers.GetAllUserURLs)
 	router.GET("/ping", handlers.Ping)
 

@@ -94,6 +94,56 @@ func APIShorten(c *gin.Context) {
 	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(env.BaseURI, newID)})
 }
 
+type apiBatchResponseRow struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+type APIBatchResponse []apiBatchResponseRow
+
+func APIShortenBatch(c *gin.Context) {
+	env := c.MustGet("env").(*env.Environment)
+	logger := env.Logger
+	store := c.MustGet("storage").(*storage.Storage)
+	uniq := c.MustGet("uniq").(string)
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		logger.Error().Err(err).Msg("can't read request body")
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	var data *storage.StoreBatchRequest
+	err = json.Unmarshal(body, data)
+	if err != nil {
+		logger.Error().Err(err).Msg("can't parse body")
+		c.String(http.StatusBadRequest, "can't parse json")
+		return
+	}
+	if len(*data) == 0 {
+		logger.Warn().Msg("empty batch")
+		c.String(http.StatusBadRequest, "empty batch")
+		return
+	}
+
+	rows, err := (*store).StoreBatch(data, uniq)
+	if err != nil {
+		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data, uniq)
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	answer := make(APIBatchResponse, 0, len(*rows))
+	for _, row := range *rows {
+		answer = append(answer, apiBatchResponseRow{
+			CorrelationID: row.CorrelationID,
+			ShortURL:      createRedirectURL(env.BaseURI, row.ID),
+		})
+	}
+
+	c.PureJSON(http.StatusCreated, answer)
+}
+
 func Redirect(c *gin.Context) {
 	env := c.MustGet("env").(*env.Environment)
 	logger := env.Logger

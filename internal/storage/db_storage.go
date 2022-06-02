@@ -3,6 +3,9 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/skaurus/yandex-practicum-go/internal/env"
@@ -61,6 +64,52 @@ func (db *dbStorage) Store(u string, by string) (int, error) {
 	)
 	err := row.Scan(&id)
 	return id, err
+}
+
+func generateValuesClause(argsNum int, rowsNum int) string {
+	numbers := make([]string, argsNum)
+	values := make([]string, rowsNum)
+	for r := 0; r < rowsNum; r++ {
+		for a := 0; a < argsNum; a++ {
+			numbers[a] = "$" + strconv.Itoa(1+r*argsNum+a)
+		}
+		values[r] = strings.Join(numbers, ", ")
+	}
+	return strings.Join(values, ", ")
+}
+
+func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
+	argsNum := 2
+	rowsNum := len(*storeBatchRequest)
+
+	sql := fmt.Sprintf(
+		"INSERT INTO urls (original_url, added_by) VALUES %s RETURNING id",
+		generateValuesClause(argsNum, rowsNum),
+	)
+	values := make([]interface{}, 0, argsNum*rowsNum)
+	for _, r := range *storeBatchRequest {
+		values = append(values, r.OriginalURL, by)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	rows, _ := db.handle.Query(ctx, sql, values...)
+	cancel()
+
+	answer := make(StoreBatchResponse, 0, rowsNum)
+	var id int
+	for i := 0; rows.Next(); i++ {
+		err := rows.Scan(&id)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				err = ErrNotFound
+			}
+			return nil, err
+		}
+		answer = append(answer, storeBatchResponseRecord{(*storeBatchRequest)[i].CorrelationID, id})
+	}
+
+	return &answer, nil
 }
 
 func (db *dbStorage) GetByID(id int) (string, error) {
