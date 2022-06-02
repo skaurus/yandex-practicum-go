@@ -82,6 +82,8 @@ func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string)
 	argsNum := 2
 	rowsNum := len(*storeBatchRequest)
 
+	// по-хорошему, задания на вставку надо разбивать на пачки какого-то принятого
+	// в проекте максимального размера (1000 работала для меня хорошо), но пока лень)
 	sql := fmt.Sprintf(
 		"INSERT INTO urls (original_url, added_by) VALUES %s RETURNING id",
 		generateValuesClause(argsNum, rowsNum),
