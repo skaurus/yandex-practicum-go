@@ -110,8 +110,6 @@ func (s *fileStorage) createBackupFile(path string) (*os.File, error) {
 func (s *fileStorage) Close() error {
 	newFile, err := s.createBackupFile(s.file.Name() + ".new")
 	if err != nil {
-		// TODO: не уверен, что будет если тут просто вернуть ошибку; хочется
-		// TODO: быть уверенным в том, что это точно заметят. так - шансы выше
 		panic(fmt.Errorf(`
 Some error happened during dumping state to disk.
 WARNING - if it fails because .new file already exists,

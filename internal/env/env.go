@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/skaurus/yandex-practicum-go/internal/config"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/zerologadapter"
 	"github.com/rs/zerolog"
-	"github.com/skaurus/yandex-practicum-go/internal/config"
 )
 
 type Environment struct {
