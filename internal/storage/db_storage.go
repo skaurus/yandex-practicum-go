@@ -73,7 +73,7 @@ func generateValuesClause(argsNum int, rowsNum int) string {
 		for a := 0; a < argsNum; a++ {
 			numbers[a] = "$" + strconv.Itoa(1+r*argsNum+a)
 		}
-		values[r] = strings.Join(numbers, ", ")
+		values[r] = "(" + strings.Join(numbers, ", ") + ")"
 	}
 	return strings.Join(values, ", ")
 }
@@ -93,8 +93,11 @@ func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	rows, _ := db.handle.Query(ctx, sql, values...)
+	rows, err := db.handle.Query(ctx, sql, values...)
 	cancel()
+	if err != nil {
+		return nil, err
+	}
 
 	answer := make(StoreBatchResponse, 0, rowsNum)
 	var id int
@@ -131,12 +134,15 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	rows, _ := db.handle.Query(
+	rows, err := db.handle.Query(
 		ctx,
 		"SELECT id, original_url FROM urls WHERE added_by = $1",
 		by,
 	)
 	cancel()
+	if err != nil {
+		return nil, err
+	}
 
 	var answer shortenedURLs
 	var id int
