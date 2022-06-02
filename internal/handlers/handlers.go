@@ -101,7 +101,7 @@ func APIShorten(c *gin.Context) {
 			alreadyURL, err := (*store).GetByURL(c, data.URL)
 			if err == nil {
 				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", data.URL, alreadyURL.ID)
-				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
+				c.PureJSON(http.StatusConflict, gin.H{"result": createRedirectURL(env.BaseURI, alreadyURL.ID)})
 				return
 			}
 			logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", data.URL)
