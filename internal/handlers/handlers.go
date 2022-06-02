@@ -113,20 +113,20 @@ func APIShortenBatch(c *gin.Context) {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
-	var data *storage.StoreBatchRequest
-	err = json.Unmarshal(body, data)
+	var data storage.StoreBatchRequest
+	err = json.Unmarshal(body, &data)
 	if err != nil {
 		logger.Error().Err(err).Msg("can't parse body")
 		c.String(http.StatusBadRequest, "can't parse json")
 		return
 	}
-	if len(*data) == 0 {
+	if len(data) == 0 {
 		logger.Warn().Msg("empty batch")
 		c.String(http.StatusBadRequest, "empty batch")
 		return
 	}
 
-	rows, err := (*store).StoreBatch(data, uniq)
+	rows, err := (*store).StoreBatch(&data, uniq)
 	if err != nil {
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data, uniq)
 		c.String(http.StatusBadRequest, err.Error())
