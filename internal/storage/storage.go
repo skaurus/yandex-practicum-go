@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,11 +11,11 @@ import (
 )
 
 type Storage interface {
-	Store(string, string) (int, error)
-	StoreBatch(*StoreBatchRequest, string) (*StoreBatchResponse, error)
-	GetByID(int) (string, error)
-	GetByURL(string) (shortenedURL, error)
-	GetAllUserUrls(string) (shortenedURLs, error)
+	Store(context.Context, string, string) (int, error)
+	StoreBatch(context.Context, *StoreBatchRequest, string) (*StoreBatchResponse, error)
+	GetByID(context.Context, int) (string, error)
+	GetByURL(context.Context, string) (shortenedURL, error)
+	GetAllUserUrls(context.Context, string) (shortenedURLs, error)
 	Close() error
 }
 

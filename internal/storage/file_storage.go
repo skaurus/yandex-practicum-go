@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/skaurus/yandex-practicum-go/internal/env"
@@ -64,28 +65,28 @@ To stop seeing this message and start - move that file somewhere
 	return s, nil
 }
 
-func (s *fileStorage) Store(u string, by string) (int, error) {
+func (s *fileStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	// переиспользуем апи, имеем всегда актуальное состояние базы в памяти
-	return s.memoryStorage.Store(u, by)
+	return s.memoryStorage.Store(ctx, u, by)
 }
 
 // TODO: Поискать, можно ли как-то без бойлерплейта сказать коду все
 // TODO: "неопределённые" методы пробовать искать в своём поле memoryStorage.
 // TODO: То есть что-то вроде объявления наследования
-func (s *fileStorage) GetByID(id int) (string, error) {
-	return s.memoryStorage.GetByID(id)
+func (s *fileStorage) GetByID(ctx context.Context, id int) (string, error) {
+	return s.memoryStorage.GetByID(ctx, id)
 }
 
-func (s *fileStorage) GetByURL(url string) (shortenedURL, error) {
-	return s.memoryStorage.GetByURL(url)
+func (s *fileStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
+	return s.memoryStorage.GetByURL(ctx, url)
 }
 
-func (s *fileStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
-	return s.memoryStorage.GetAllUserUrls(by)
+func (s *fileStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
+	return s.memoryStorage.GetAllUserUrls(ctx, by)
 }
 
-func (s *fileStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
-	return s.memoryStorage.StoreBatch(storeBatchRequest, by)
+func (s *fileStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
+	return s.memoryStorage.StoreBatch(ctx, storeBatchRequest, by)
 }
 
 // createBackupFile создаёт файл с дампом текущего состояния хранилища

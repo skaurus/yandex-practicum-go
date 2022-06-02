@@ -43,10 +43,10 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*store).Store(body, uniq)
+	newID, err := (*store).Store(c, body, uniq)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			alreadyURL, err := (*store).GetByURL(body)
+			alreadyURL, err := (*store).GetByURL(c, body)
 			if err == nil {
 				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", body, alreadyURL.ID)
 				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
@@ -95,10 +95,10 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*store).Store(data.URL, uniq)
+	newID, err := (*store).Store(c, data.URL, uniq)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			alreadyURL, err := (*store).GetByURL(data.URL)
+			alreadyURL, err := (*store).GetByURL(c, data.URL)
 			if err == nil {
 				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", data.URL, alreadyURL.ID)
 				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
@@ -147,7 +147,7 @@ func APIShortenBatch(c *gin.Context) {
 		return
 	}
 
-	rows, err := (*store).StoreBatch(&data, uniq)
+	rows, err := (*store).StoreBatch(c, &data, uniq)
 	if err != nil {
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data, uniq)
 		c.String(http.StatusBadRequest, err.Error())
@@ -177,7 +177,7 @@ func Redirect(c *gin.Context) {
 		return
 	}
 
-	originalURL, err := (*store).GetByID(id)
+	originalURL, err := (*store).GetByID(c, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			logger.Warn().Msgf("can't find id [%d]", id)
@@ -205,7 +205,7 @@ func GetAllUserURLs(c *gin.Context) {
 	store := c.MustGet("storage").(*storage.Storage)
 	uniq := c.MustGet("uniq").(string)
 
-	rows, err := (*store).GetAllUserUrls(uniq)
+	rows, err := (*store).GetAllUserUrls(c, uniq)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			// это валидный кейс, просто ответим 204

@@ -53,9 +53,9 @@ CREATE TABLE IF NOT EXISTS urls (
 	return db, nil
 }
 
-func (db *dbStorage) Store(u string, by string) (int, error) {
+func (db *dbStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	var id int
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
@@ -88,7 +88,7 @@ func generateValuesClause(argsNum int, rowsNum int) string {
 	return strings.Join(values, ", ")
 }
 
-func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
+func (db *dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
 	argsNum := 2
 	rowsNum := len(*storeBatchRequest)
 
@@ -103,7 +103,7 @@ func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string)
 		values = append(values, r.OriginalURL, by)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	rows, err := db.handle.Query(ctx, sql, values...)
 	cancel()
@@ -127,10 +127,10 @@ func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string)
 	return &answer, nil
 }
 
-func (db *dbStorage) GetByID(id int) (string, error) {
+func (db *dbStorage) GetByID(ctx context.Context, id int) (string, error) {
 	var originalURL string
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
@@ -144,11 +144,11 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 	return originalURL, err
 }
 
-func (db *dbStorage) GetByURL(url string) (shortenedURL, error) {
+func (db *dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
 	var id int
 	var addedBy string
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
@@ -167,8 +167,8 @@ func (db *dbStorage) GetByURL(url string) (shortenedURL, error) {
 	return shortenedURL{id, url, addedBy}, nil
 }
 
-func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+func (db *dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	rows, err := db.handle.Query(
 		ctx,

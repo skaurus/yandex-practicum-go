@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -37,7 +38,7 @@ func Test_memoryStorage_Store(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := store.Store(tt.args.url, tt.args.addedBy)
+			got, err := store.Store(context.Background(), tt.args.url, tt.args.addedBy)
 			assert.NilError(t, err)
 			assert.Equal(t, tt.wantedValue, got)
 			// AllowUnexported не упоминается в документации пакета gotest.tools,
@@ -68,7 +69,7 @@ func Test_memoryStorage_GetByID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := store.GetByID(tt.args.id)
+			got, err := store.GetByID(context.Background(), tt.args.id)
 			if tt.err == nil {
 				assert.NilError(t, err)
 			} else {
