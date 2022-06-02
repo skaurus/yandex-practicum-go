@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 	defer env.LogFile.Close()
-	store := storage.New(env) // как неприятно, что пойнтер нельзя взять здесь же
+	store := storage.New(env)
 	defer store.Close()
 
 	router := app.SetupRouter(env, &store)

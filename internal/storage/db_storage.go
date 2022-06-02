@@ -82,7 +82,7 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	rows, err := db.handle.Query(
+	rows, _ := db.handle.Query(
 		ctx,
 		"SELECT id, original_url FROM urls WHERE added_by = $1",
 		by,
@@ -103,7 +103,7 @@ func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 		answer = append(answer, shortenedURL{id, originalURL, by})
 	}
 
-	return answer, err
+	return answer, nil
 }
 
 func (db *dbStorage) Close() error {
