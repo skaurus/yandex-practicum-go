@@ -48,6 +48,44 @@ func (s *memoryStorage) GetByID(id int) (string, error) {
 	return url, nil
 }
 
+func (s *memoryStorage) GetByURL(url string) (shortenedURL, error) {
+	// текущая структура хранения максимально неудобна для этого метода;
+	// ну что делать, применим брутфорс и будем надеяться, что её будут
+	// вызывать только с dbStorage
+	found := false
+	var id int
+	var originalURL string
+	for id, originalURL = range s.idToURLs {
+		if originalURL == url {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return shortenedURL{}, ErrNotFound
+	}
+
+	found = false
+	var addedBy string
+	var ids []int
+	for addedBy, ids = range s.userToIDs {
+		for _, v := range ids {
+			if v == id {
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		return shortenedURL{}, ErrNotFound
+	}
+
+	return shortenedURL{id, originalURL, addedBy}, nil
+}
+
 func (s *memoryStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	ids, ok := s.userToIDs[by]
 	if !ok {

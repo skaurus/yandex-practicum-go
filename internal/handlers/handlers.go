@@ -30,21 +30,32 @@ func BodyShorten(c *gin.Context) {
 	store := c.MustGet("storage").(*storage.Storage)
 	uniq := c.MustGet("uniq").(string)
 
-	body, err := io.ReadAll(c.Request.Body)
+	bodyB, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		logger.Error().Err(err).Msg("can't read request body")
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
+	body := string(bodyB)
 	if len(body) == 0 {
 		logger.Warn().Msg("empty body")
 		c.String(http.StatusBadRequest, ErrEmptyURL)
 		return
 	}
 
-	newID, err := (*store).Store(string(body), uniq)
+	newID, err := (*store).Store(body, uniq)
 	if err != nil {
-		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", string(body), uniq)
+		if errors.Is(err, storage.ErrNotFound) {
+			alreadyURL, err := (*store).GetByURL(body)
+			if err == nil {
+				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", body, alreadyURL.ID)
+				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
+				return
+			}
+			logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", body)
+		} else {
+			logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", body, uniq)
+		}
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -86,7 +97,17 @@ func APIShorten(c *gin.Context) {
 
 	newID, err := (*store).Store(data.URL, uniq)
 	if err != nil {
-		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data.URL, uniq)
+		if errors.Is(err, storage.ErrNotFound) {
+			alreadyURL, err := (*store).GetByURL(data.URL)
+			if err == nil {
+				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", data.URL, alreadyURL.ID)
+				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
+				return
+			}
+			logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", data.URL)
+		} else {
+			logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data.URL, uniq)
+		}
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}

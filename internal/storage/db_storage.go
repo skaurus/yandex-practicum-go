@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS urls (
 
 	err = db.ExecWithTimeout(
 		context.Background(), 1*time.Second,
-		"CREATE INDEX IF NOT EXISTS \"urls_original_url_idx\" ON urls (original_url)",
+		"CREATE UNIQUE INDEX IF NOT EXISTS \"urls_original_url_idx\" ON urls (original_url)",
 	)
 	if err != nil {
 		return nil, err
@@ -59,10 +59,20 @@ func (db *dbStorage) Store(u string, by string) (int, error) {
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"INSERT INTO urls (original_url, added_by) VALUES ($1, $2) RETURNING id",
+		`
+INSERT INTO urls (original_url, added_by)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+RETURNING id`,
 		u, by,
 	)
 	err := row.Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = ErrNotFound
+		}
+		return 0, err
+	}
 	return id, err
 }
 
@@ -119,6 +129,7 @@ func (db *dbStorage) StoreBatch(storeBatchRequest *StoreBatchRequest, by string)
 
 func (db *dbStorage) GetByID(id int) (string, error) {
 	var originalURL string
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
@@ -131,6 +142,29 @@ func (db *dbStorage) GetByID(id int) (string, error) {
 		err = ErrNotFound
 	}
 	return originalURL, err
+}
+
+func (db *dbStorage) GetByURL(url string) (shortenedURL, error) {
+	var id int
+	var addedBy string
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	row := db.handle.QueryRow(
+		ctx,
+		"SELECT id, added_by FROM urls WHERE original_url = $1",
+		url,
+	)
+	cancel()
+	err := row.Scan(&id, &addedBy)
+	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+		err = ErrNotFound
+	}
+	if err != nil {
+		return shortenedURL{}, err
+	}
+
+	return shortenedURL{id, url, addedBy}, nil
 }
 
 func (db *dbStorage) GetAllUserUrls(by string) (shortenedURLs, error) {

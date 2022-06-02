@@ -76,6 +76,10 @@ func (s *fileStorage) GetByID(id int) (string, error) {
 	return s.memoryStorage.GetByID(id)
 }
 
+func (s *fileStorage) GetByURL(url string) (shortenedURL, error) {
+	return s.memoryStorage.GetByURL(url)
+}
+
 func (s *fileStorage) GetAllUserUrls(by string) (shortenedURLs, error) {
 	return s.memoryStorage.GetAllUserUrls(by)
 }

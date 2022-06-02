@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/skaurus/yandex-practicum-go/internal/env"
 )
 
@@ -12,6 +13,7 @@ type Storage interface {
 	Store(string, string) (int, error)
 	StoreBatch(*StoreBatchRequest, string) (*StoreBatchResponse, error)
 	GetByID(int) (string, error)
+	GetByURL(string) (shortenedURL, error)
 	GetAllUserUrls(string) (shortenedURLs, error)
 	Close() error
 }
