@@ -32,7 +32,7 @@ func main() {
 	store := storage.New(env)
 	defer store.Close()
 
-	router := app.SetupRouter(env, &store)
+	router := app.SetupRouter(env, store)
 	srv := &http.Server{
 		Addr:    env.Config.ServerAddr,
 		Handler: router,

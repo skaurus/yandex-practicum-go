@@ -31,7 +31,7 @@ type shortenedURL struct {
 }
 type shortenedURLs []shortenedURL
 
-// storeBatch* используются в "/api/shorten/batch" (handlers.APIShortenBatch)
+// storeBatch* используются в "/api/shorten/batch" (handlers.handlerAPIShortenBatch)
 type storeBatchRequestRecord struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
@@ -111,7 +111,7 @@ func (s *memoryStorage) memoryToRows() *shortenedURLs {
 // декларации, компилятор будет ругаться, что мы возвращаем не тот тип:
 // cannot use ... (type *memoryStorage) as the type *Storage
 // TODO: Как быть?
-func New(env *env.Environment) Storage {
+func New(env env.Environment) Storage {
 	if len(env.Config.DBConnectString) > 0 {
 		storage, err := NewDBStorage(env)
 		if err != nil {

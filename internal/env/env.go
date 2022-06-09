@@ -13,6 +13,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Environment - если конфиг содержит собственно конфигурируемые параметры - имя
+// файла, домен, etc - строки, числа, булевы значения;
+// то Environment - содержит ссылку на конфиг и уже вычисляемые на его основе
+// объекты
 type Environment struct {
 	Config  *config.Config
 	LogFile *os.File
@@ -21,9 +25,9 @@ type Environment struct {
 	DBConn  *pgx.Conn
 }
 
-func New() (*Environment, error) {
+func New() (Environment, error) {
 	var err error
-	env := &Environment{
+	env := Environment{
 		Config: config.ParseConfig(),
 	}
 
@@ -45,7 +49,7 @@ func New() (*Environment, error) {
 	if len(env.Config.DBConnectString) > 0 {
 		connConfig, err := pgx.ParseConfig(env.Config.DBConnectString)
 		if err != nil {
-			return nil, err
+			return Environment{}, err
 		}
 		connConfig.Logger = zerologadapter.NewLogger(*env.Logger)
 		//connConfig.LogLevel = pgx.LogLevelError // можно использовать для дебага
@@ -57,7 +61,7 @@ func New() (*Environment, error) {
 		defer cancel()
 		env.DBConn, err = pgx.ConnectConfig(ctx, connConfig)
 		if err != nil {
-			return nil, err
+			return Environment{}, err
 		}
 		cancel()
 	}

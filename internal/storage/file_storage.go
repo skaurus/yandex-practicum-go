@@ -16,7 +16,7 @@ type fileStorage struct {
 	memoryStorage // распаршенное содержимое файла
 }
 
-func NewFileStorage(env *env.Environment) (fileStorage, error) {
+func NewFileStorage(env env.Environment) (fileStorage, error) {
 	filename := env.Config.StorageFileName
 	// проверка консистентности перед стартом
 	_, err := os.OpenFile(filename+".new", os.O_RDONLY, 0644)

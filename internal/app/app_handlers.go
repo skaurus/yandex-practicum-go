@@ -1,4 +1,4 @@
-package handlers
+package app
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/skaurus/yandex-practicum-go/internal/env"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
 	"github.com/gin-gonic/gin"
@@ -19,15 +18,38 @@ const (
 	ErrEmptyURL = "empty url"
 )
 
-func createRedirectURL(baseURI *url.URL, newID int) string {
+var ErrDuplicate = errors.New("url is duplicate")
+var ErrDuplicateNotFound = errors.New("url is duplicate, but couldn't be found")
+
+func (app App) createRedirectURL(newID int) string {
 	u, _ := url.Parse(fmt.Sprintf("./%d", newID))
-	return baseURI.ResolveReference(u).String()
+	return app.env.BaseURI.ResolveReference(u).String()
 }
 
-func BodyShorten(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
-	store := c.MustGet("storage").(*storage.Storage)
+func (app App) storeOneURL(c *gin.Context, url string, addedBy string) (int, error) {
+	logger := app.env.Logger
+
+	newID, err := app.storage.Store(c, url, addedBy)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			alreadyURL, err := app.storage.GetByURL(c, url)
+			if err == nil {
+				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", url, alreadyURL.ID)
+				return newID, ErrDuplicate
+			} else {
+				logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", url)
+				return newID, ErrDuplicateNotFound
+			}
+		}
+		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", url, addedBy)
+		return 0, err
+	}
+
+	return newID, nil
+}
+
+func (app App) handlerBodyShorten(c *gin.Context) {
+	logger := app.env.Logger
 	uniq := c.MustGet("uniq").(string)
 
 	bodyB, err := io.ReadAll(c.Request.Body)
@@ -43,34 +65,25 @@ func BodyShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*store).Store(c, body, uniq)
+	newID, err := app.storeOneURL(c, body, uniq)
 	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			alreadyURL, err := (*store).GetByURL(c, body)
-			if err == nil {
-				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", body, alreadyURL.ID)
-				c.String(http.StatusConflict, createRedirectURL(env.BaseURI, alreadyURL.ID))
-				return
-			}
-			logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", body)
-		} else {
-			logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", body, uniq)
+		if errors.Is(err, ErrDuplicate) {
+			c.String(http.StatusConflict, app.createRedirectURL(newID))
+			return
 		}
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.String(http.StatusCreated, createRedirectURL(env.BaseURI, newID))
+	c.String(http.StatusCreated, app.createRedirectURL(newID))
 }
 
 type APIRequest struct {
 	URL string `json:"url"`
 }
 
-func APIShorten(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
-	store := c.MustGet("storage").(*storage.Storage)
+func (app App) handlerAPIShorten(c *gin.Context) {
+	logger := app.env.Logger
 	uniq := c.MustGet("uniq").(string)
 
 	// с использованием этой библиотеки не проходили тесты Практикума
@@ -95,24 +108,17 @@ func APIShorten(c *gin.Context) {
 		return
 	}
 
-	newID, err := (*store).Store(c, data.URL, uniq)
+	newID, err := app.storeOneURL(c, data.URL, uniq)
 	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			alreadyURL, err := (*store).GetByURL(c, data.URL)
-			if err == nil {
-				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", data.URL, alreadyURL.ID)
-				c.PureJSON(http.StatusConflict, gin.H{"result": createRedirectURL(env.BaseURI, alreadyURL.ID)})
-				return
-			}
-			logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", data.URL)
-		} else {
-			logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data.URL, uniq)
+		if errors.Is(err, ErrDuplicate) {
+			c.PureJSON(http.StatusConflict, gin.H{"result": app.createRedirectURL(newID)})
+			return
 		}
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.PureJSON(http.StatusCreated, gin.H{"result": createRedirectURL(env.BaseURI, newID)})
+	c.PureJSON(http.StatusCreated, gin.H{"result": app.createRedirectURL(newID)})
 }
 
 type apiBatchResponseRow struct {
@@ -122,10 +128,8 @@ type apiBatchResponseRow struct {
 
 type APIBatchResponse []apiBatchResponseRow
 
-func APIShortenBatch(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
-	store := c.MustGet("storage").(*storage.Storage)
+func (app App) handlerAPIShortenBatch(c *gin.Context) {
+	logger := app.env.Logger
 	uniq := c.MustGet("uniq").(string)
 
 	body, err := io.ReadAll(c.Request.Body)
@@ -147,7 +151,7 @@ func APIShortenBatch(c *gin.Context) {
 		return
 	}
 
-	rows, err := (*store).StoreBatch(c, &data, uniq)
+	rows, err := app.storage.StoreBatch(c, &data, uniq)
 	if err != nil {
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", data, uniq)
 		c.String(http.StatusBadRequest, err.Error())
@@ -158,17 +162,15 @@ func APIShortenBatch(c *gin.Context) {
 	for _, row := range *rows {
 		answer = append(answer, apiBatchResponseRow{
 			CorrelationID: row.CorrelationID,
-			ShortURL:      createRedirectURL(env.BaseURI, row.ID),
+			ShortURL:      app.createRedirectURL(row.ID),
 		})
 	}
 
 	c.PureJSON(http.StatusCreated, answer)
 }
 
-func Redirect(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
-	store := c.MustGet("storage").(*storage.Storage)
+func (app App) handlerRedirect(c *gin.Context) {
+	logger := app.env.Logger
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -177,7 +179,7 @@ func Redirect(c *gin.Context) {
 		return
 	}
 
-	originalURL, err := (*store).GetByID(c, id)
+	originalURL, err := app.storage.GetByID(c, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			logger.Warn().Msgf("can't find id [%d]", id)
@@ -199,13 +201,11 @@ type userURLRow struct {
 }
 type allUserURLs []userURLRow
 
-func GetAllUserURLs(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
-	store := c.MustGet("storage").(*storage.Storage)
+func (app App) handlerGetAllUserURLs(c *gin.Context) {
+	logger := app.env.Logger
 	uniq := c.MustGet("uniq").(string)
 
-	rows, err := (*store).GetAllUserUrls(c, uniq)
+	rows, err := app.storage.GetAllUserUrls(c, uniq)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			// это валидный кейс, просто ответим 204
@@ -220,7 +220,7 @@ func GetAllUserURLs(c *gin.Context) {
 	answer := make(allUserURLs, 0, len(rows))
 	for _, row := range rows {
 		answer = append(answer, userURLRow{
-			ShortURL:    createRedirectURL(env.BaseURI, row.ID),
+			ShortURL:    app.createRedirectURL(row.ID),
 			OriginalURL: row.OriginalURL,
 		})
 	}
@@ -232,20 +232,19 @@ func GetAllUserURLs(c *gin.Context) {
 	c.PureJSON(http.StatusOK, answer)
 }
 
-func Ping(c *gin.Context) {
-	env := c.MustGet("env").(*env.Environment)
-	logger := env.Logger
+func (app App) handlerPing(c *gin.Context) {
+	logger := app.env.Logger
 
 	// Это вынесено отдельно, потому что с пустой строкой драйвер всё равно
 	// пытается подключиться, с параметрами по умолчанию (текущий юзер,
 	// база = текущему юзеру, без пароля), обламывается, и светит в логи юзера
-	if env.DBConn == nil {
+	if app.env.DBConn == nil {
 		logger.Error().Msg("no db connection string was provided, nothing to ping")
 		c.String(http.StatusInternalServerError, "")
 		return
 	}
 
-	err := env.DBConn.Ping(c)
+	err := app.env.DBConn.Ping(c)
 	if err != nil {
 		logger.Error().Err(err).Msg("db ping failed")
 		c.String(http.StatusInternalServerError, "")

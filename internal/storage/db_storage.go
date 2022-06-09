@@ -17,7 +17,7 @@ type dbStorage struct {
 	handle *pgx.Conn
 }
 
-func NewDBStorage(env *env.Environment) (dbStorage, error) {
+func NewDBStorage(env env.Environment) (dbStorage, error) {
 	db := dbStorage{env.DBConn}
 
 	// создадим основную таблицу данных

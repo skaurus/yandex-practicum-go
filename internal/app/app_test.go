@@ -27,13 +27,13 @@ func TestRoutes(t *testing.T) {
 		panic(err)
 	}
 	store := storage.Storage(storage.NewMemoryStorage())
-	router := SetupRouter(env, &store)
+	router := SetupRouter(env, store)
 
-	envWithAnotherBase := *env
+	envWithAnotherBase := env
 	envWithAnotherBase.Config.BaseAddr = "https://ya.us/s/" // yet another url shortener
 	envWithAnotherBase.BaseURI, _ = url.Parse(envWithAnotherBase.Config.BaseAddr)
 
-	routerWithAnotherBase := SetupRouter(&envWithAnotherBase, &store)
+	routerWithAnotherBase := SetupRouter(envWithAnotherBase, store)
 	originalRouter := router
 
 	type want struct {
