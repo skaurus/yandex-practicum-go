@@ -14,10 +14,6 @@ import (
 )
 
 type Environment struct {
-	// Это странное решение - что counter это ссылка - нужно, чтобы при передаче
-	// по ссылке инстанса memoryStorage поле counter в этом инстансе не копировалось,
-	// а оставалось общим (нужно в тестах, чтобы общий storage у двух разных router
-	// работал корректно)
 	Config  *config.Config
 	LogFile *os.File
 	Logger  *zerolog.Logger

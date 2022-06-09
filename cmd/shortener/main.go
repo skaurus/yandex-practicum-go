@@ -28,6 +28,7 @@ func main() {
 		panic(err)
 	}
 	defer env.LogFile.Close()
+
 	store := storage.New(env)
 	defer store.Close()
 
