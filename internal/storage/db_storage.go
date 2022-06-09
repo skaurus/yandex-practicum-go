@@ -17,8 +17,8 @@ type dbStorage struct {
 	handle *pgx.Conn
 }
 
-func NewDBStorage(env *env.Environment) (*dbStorage, error) {
-	db := &dbStorage{env.DBConn}
+func NewDBStorage(env *env.Environment) (dbStorage, error) {
+	db := dbStorage{env.DBConn}
 
 	// создадим основную таблицу данных
 	// (вообще лучше было бы использовать какую-нибудь систему миграций)
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS urls (
 )`,
 	)
 	if err != nil {
-		return nil, err
+		return dbStorage{}, err
 	}
 
 	err = db.ExecWithTimeout(
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS urls (
 		"CREATE UNIQUE INDEX IF NOT EXISTS \"urls_original_url_idx\" ON urls (original_url)",
 	)
 	if err != nil {
-		return nil, err
+		return dbStorage{}, err
 	}
 
 	err = db.ExecWithTimeout(
@@ -47,13 +47,13 @@ CREATE TABLE IF NOT EXISTS urls (
 		"CREATE INDEX IF NOT EXISTS \"urls_added_by_idx\" ON urls (added_by)",
 	)
 	if err != nil {
-		return nil, err
+		return dbStorage{}, err
 	}
 
 	return db, nil
 }
 
-func (db *dbStorage) Store(ctx context.Context, u string, by string) (int, error) {
+func (db dbStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	var id int
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
@@ -88,7 +88,7 @@ func generateValuesClause(argsNum int, rowsNum int) string {
 	return strings.Join(values, ", ")
 }
 
-func (db *dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
+func (db dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
 	argsNum := 2
 	rowsNum := len(*storeBatchRequest)
 
@@ -127,7 +127,7 @@ func (db *dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBat
 	return &answer, nil
 }
 
-func (db *dbStorage) GetByID(ctx context.Context, id int) (string, error) {
+func (db dbStorage) GetByID(ctx context.Context, id int) (string, error) {
 	var originalURL string
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
@@ -144,7 +144,7 @@ func (db *dbStorage) GetByID(ctx context.Context, id int) (string, error) {
 	return originalURL, err
 }
 
-func (db *dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
+func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
 	var id int
 	var addedBy string
 
@@ -167,7 +167,7 @@ func (db *dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, er
 	return shortenedURL{id, url, addedBy}, nil
 }
 
-func (db *dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
+func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	rows, err := db.handle.Query(
@@ -197,11 +197,11 @@ func (db *dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedUR
 	return answer, nil
 }
 
-func (db *dbStorage) Close() error {
+func (db dbStorage) Close() error {
 	return db.handle.Close(context.Background())
 }
 
-func (db *dbStorage) ExecWithTimeout(ctx context.Context, timeout time.Duration, sql string) error {
+func (db dbStorage) ExecWithTimeout(ctx context.Context, timeout time.Duration, sql string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	_, err := db.handle.Exec(ctx, sql)

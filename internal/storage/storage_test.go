@@ -43,7 +43,7 @@ func Test_memoryStorage_Store(t *testing.T) {
 			assert.Equal(t, tt.wantedValue, got)
 			// AllowUnexported не упоминается в документации пакета gotest.tools,
 			// но удалось нагуглить решение по тексту ошибки
-			assert.DeepEqual(t, &tt.wantedStruct, store, cmp.AllowUnexported(memoryStorage{}))
+			assert.DeepEqual(t, tt.wantedStruct, store, cmp.AllowUnexported(memoryStorage{}))
 		})
 	}
 }
