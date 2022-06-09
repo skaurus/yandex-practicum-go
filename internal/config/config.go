@@ -11,7 +11,7 @@ import (
 // мы слушаем это одно, а как мы доступны снаружи - возможно, совсем другое
 const (
 	DefaultServerAddr   = "localhost:8080"
-	DefaultLogName      = "app.log"
+	DefaultLogName      = "app.log" // путь от корневой папки репозитория
 	DefaultBaseAddr     = "http://localhost:8080/"
 	DefaultCookieDomain = "localhost"
 )

@@ -35,10 +35,10 @@ func (app App) storeOneURL(c *gin.Context, url string, addedBy string) (int, err
 			alreadyURL, err := app.storage.GetByURL(c, url)
 			if err == nil {
 				logger.Warn().Msgf("url [%s] is duplicated, original is [%d]", url, alreadyURL.ID)
-				return newID, ErrDuplicate
+				return alreadyURL.ID, ErrDuplicate
 			} else {
 				logger.Error().Err(err).Msgf("url [%s] is duplicated, but can't find original", url)
-				return newID, ErrDuplicateNotFound
+				return 0, ErrDuplicateNotFound
 			}
 		}
 		logger.Error().Err(err).Msgf("can't shorten an url [%s] by %s", url, addedBy)

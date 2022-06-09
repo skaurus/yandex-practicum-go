@@ -36,7 +36,7 @@ func New() (Environment, error) {
 		panic(err)
 	}
 
-	env.LogFile, err = os.OpenFile(env.Config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	env.LogFile, err = os.OpenFile("../../"+env.Config.LogName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		panic(err)
 	}
