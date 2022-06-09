@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/skaurus/yandex-practicum-go/internal/env"
@@ -19,7 +18,28 @@ type Storage interface {
 	Close() error
 }
 
-var ErrNotFound = errors.New("not found")
+const errNotFound = "not found"
+
+type Error struct {
+	text string
+	err  error
+}
+
+func (e *Error) Error() string {
+	return e.text
+}
+func (e *Error) Unwrap() error {
+	return e.err
+}
+func (e *Error) Is(target error) bool {
+	return e.Error() == target.Error()
+}
+
+func newError(errorText string, originalError error) error {
+	return &Error{errorText, originalError}
+}
+
+var ErrNotFound = newError(errNotFound, nil)
 
 // опишем тип "строки" с данными; будем энкодить его в файле как JSON,
 // но сэкономим на повторении ключей: https://eagain.net/articles/go-json-array-to-struct/

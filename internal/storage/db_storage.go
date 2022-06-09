@@ -69,7 +69,7 @@ RETURNING id`,
 	err := row.Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			err = ErrNotFound
+			err = newError(errNotFound, err)
 		}
 		return 0, err
 	}
@@ -117,7 +117,7 @@ func (db dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatc
 		err := rows.Scan(&id)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				err = ErrNotFound
+				err = newError(errNotFound, err)
 			}
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func (db dbStorage) GetByID(ctx context.Context, id int) (string, error) {
 	)
 	err := row.Scan(&originalURL)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		err = ErrNotFound
+		err = newError(errNotFound, err)
 	}
 	return originalURL, err
 }
@@ -158,7 +158,7 @@ func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, err
 	cancel()
 	err := row.Scan(&id, &addedBy)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		err = ErrNotFound
+		err = newError(errNotFound, err)
 	}
 	if err != nil {
 		return shortenedURL{}, err
@@ -187,7 +187,7 @@ func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURL
 		err := rows.Scan(&id, &originalURL)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				err = ErrNotFound
+				err = newError(errNotFound, err)
 			}
 			return nil, err
 		}

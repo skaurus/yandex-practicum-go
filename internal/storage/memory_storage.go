@@ -45,7 +45,7 @@ func (s memoryStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreB
 func (s memoryStorage) GetByID(ctx context.Context, id int) (string, error) {
 	url, ok := s.idToURLs[id]
 	if !ok {
-		return "", ErrNotFound
+		return "", newError(errNotFound, nil)
 	}
 	return url, nil
 }
@@ -64,7 +64,7 @@ func (s memoryStorage) GetByURL(ctx context.Context, url string) (shortenedURL, 
 		}
 	}
 	if !found {
-		return shortenedURL{}, ErrNotFound
+		return shortenedURL{}, newError(errNotFound, nil)
 	}
 
 	found = false
@@ -82,7 +82,7 @@ func (s memoryStorage) GetByURL(ctx context.Context, url string) (shortenedURL, 
 		}
 	}
 	if !found {
-		return shortenedURL{}, ErrNotFound
+		return shortenedURL{}, newError(errNotFound, nil)
 	}
 
 	return shortenedURL{id, originalURL, addedBy}, nil
