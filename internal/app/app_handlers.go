@@ -292,6 +292,17 @@ func (app App) handlerDeleteURLs(c *gin.Context) {
 	// плюс повесить ограничение на максимальное число урлов, что
 	// можно удалить за раз
 	shortenedURLs, err := app.storage.GetByIDMulti(c, ids)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			logger.Warn().Msgf("can't find ids %s", body)
+			c.String(http.StatusBadRequest, "wrong ids")
+		} else {
+			logger.Error().Err(err).Msgf("can't find ids %s", body)
+			c.String(http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+
 	canDeleteSomething := false
 	for _, shortURL := range shortenedURLs {
 		if shortURL.AddedBy != uniq {
