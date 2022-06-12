@@ -16,6 +16,7 @@ type shortenedURL struct {
 	ID          int
 	OriginalURL string
 	AddedBy     string
+	IsDeleted   bool
 }
 type shortenedURLs []shortenedURL
 
@@ -23,8 +24,10 @@ type Storage interface {
 	Store(context.Context, string, string) (int, error)
 	StoreBatch(context.Context, *StoreBatchRequest, string) (*StoreBatchResponse, error)
 	GetByID(context.Context, int) (shortenedURL, error)
+	GetByIDMulti(context.Context, []int) (shortenedURLs, error)
 	GetByURL(context.Context, string) (shortenedURL, error)
 	GetAllUserUrls(context.Context, string) (shortenedURLs, error)
+	DeleteByID(context.Context, int) error
 	Close() error
 }
 

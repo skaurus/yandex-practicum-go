@@ -128,38 +128,71 @@ func (db dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatc
 }
 
 func (db dbStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
-	var originalURL, addedBy string
-
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"SELECT original_url, added_by FROM urls WHERE id = $1",
+		"SELECT original_url, added_by, is_deleted FROM urls WHERE id = $1",
 		id,
 	)
-	err := row.Scan(&originalURL, &addedBy)
+	cancel()
+
+	var originalURL, addedBy string
+	var isDeleted bool
+	err := row.Scan(&originalURL, &addedBy, &isDeleted)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = newError(errNotFound, err)
 		}
-		return shortenedURL{}, nil
+		return shortenedURL{}, err
 	}
 
-	return shortenedURL{id, originalURL, addedBy}, nil
+	return shortenedURL{id, originalURL, addedBy, isDeleted}, nil
+}
+
+func (db dbStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	rows, err := db.handle.Query(
+		ctx,
+		"SELECT id, original_url, added_by, is_deleted FROM urls WHERE id = ANY($1)",
+		ids,
+	)
+	cancel()
+	if err != nil {
+		return nil, err
+	}
+
+	answer := make(shortenedURLs, 0, len(ids))
+	var id int
+	var originalURL, addedBy string
+	var isDeleted bool
+	for rows.Next() {
+		err := rows.Scan(&id, &originalURL, &addedBy, &isDeleted)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				err = newError(errNotFound, err)
+			}
+			return nil, err
+		}
+		answer = append(answer, shortenedURL{id, originalURL, addedBy, isDeleted})
+	}
+
+	return answer, nil
 }
 
 func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
-	var id int
-	var addedBy string
-
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"SELECT id, added_by FROM urls WHERE original_url = $1",
+		"SELECT id, added_by FROM urls WHERE original_url = $1 AND NOT is_deleted",
 		url,
 	)
 	cancel()
+
+	var id int
+	var addedBy string
 	err := row.Scan(&id, &addedBy)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		err = newError(errNotFound, err)
@@ -168,7 +201,7 @@ func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, err
 		return shortenedURL{}, err
 	}
 
-	return shortenedURL{id, url, addedBy}, nil
+	return shortenedURL{id, url, addedBy, false}, nil
 }
 
 func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
@@ -176,7 +209,7 @@ func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURL
 	defer cancel()
 	rows, err := db.handle.Query(
 		ctx,
-		"SELECT id, original_url FROM urls WHERE added_by = $1",
+		"SELECT id, original_url FROM urls WHERE added_by = $1 AND NOT is_deleted",
 		by,
 	)
 	cancel()
@@ -195,10 +228,31 @@ func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURL
 			}
 			return nil, err
 		}
-		answer = append(answer, shortenedURL{id, originalURL, by})
+		answer = append(answer, shortenedURL{id, originalURL, by, false})
 	}
 
 	return answer, nil
+}
+
+func (db dbStorage) DeleteByID(ctx context.Context, id int) error {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	rows, _ := db.handle.Query(
+		ctx,
+		"UPDATE urls SET is_deleted = true WHERE id = $1",
+		id,
+	)
+	cancel()
+
+	rows.Close()
+	err := rows.Err()
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = newError(errNotFound, err)
+		}
+	}
+
+	return err
 }
 
 func (db dbStorage) Close() error {

@@ -169,6 +169,10 @@ func (app App) handlerAPIShortenBatch(c *gin.Context) {
 	c.PureJSON(http.StatusCreated, answer)
 }
 
+// handlerRedirect - ищет сокращённый урл по параметру id;
+// если урл найден - делает редирект со статусом 307,
+// при запросе удалённого URL возвращает статус 410,
+// а при остальных ошибках - отвечает статусом 400.
 func (app App) handlerRedirect(c *gin.Context) {
 	logger := app.env.Logger
 
@@ -188,6 +192,11 @@ func (app App) handlerRedirect(c *gin.Context) {
 			logger.Error().Err(err).Msgf("can't find id [%d]", id)
 			c.String(http.StatusBadRequest, err.Error())
 		}
+		return
+	}
+
+	if shortURL.IsDeleted {
+		c.String(http.StatusGone, "")
 		return
 	}
 
@@ -230,6 +239,80 @@ func (app App) handlerGetAllUserURLs(c *gin.Context) {
 		return
 	}
 	c.PureJSON(http.StatusOK, answer)
+}
+
+func (app App) deleteURL(c *gin.Context, id int) error {
+	err := app.storage.DeleteByID(c, id)
+	if err != nil {
+		app.env.Logger.Error().Err(err).Msgf("can't delete url %d", id)
+	}
+	return err
+}
+
+// handlerDeleteURLs - асинхронный хендлер; он принимает в теле запроса
+// список айди урлов на удаление в виде JSON с массивом строк в body.
+// В случае успешного добавления задания в очередь должен возвращать
+// HTTP-статус 202 Accepted.
+// Фактический результат удаления может происходить позже — каким-либо
+// образом оповещать пользователя об успешности или неуспешности не нужно.
+// Успешно удалить URL может пользователь, его создавший.
+func (app App) handlerDeleteURLs(c *gin.Context) {
+	logger := app.env.Logger
+	uniq := c.MustGet("uniq").(string)
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		logger.Error().Err(err).Msg("can't read request body")
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+	var sids []string
+	err = json.Unmarshal(body, &sids)
+	if err != nil {
+		logger.Error().Err(err).Msgf("can't parse body %s", body)
+		c.String(http.StatusBadRequest, "can't parse json")
+		return
+	}
+	ids := make([]int, 0, len(sids))
+	for _, v := range sids {
+		id, err := strconv.Atoi(v)
+		if err != nil {
+			logger.Error().Err(err).Msgf("can't convert [%s] to int", v)
+			continue
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		logger.Warn().Msg("empty batch")
+		c.String(http.StatusBadRequest, "empty batch")
+		return
+	}
+
+	// тут бы запрашивать не все сразу, а пачками например по 100;
+	// плюс повесить ограничение на максимальное число урлов, что
+	// можно удалить за раз
+	shortenedURLs, err := app.storage.GetByIDMulti(c, ids)
+	canDeleteSomething := false
+	for _, shortURL := range shortenedURLs {
+		if shortURL.AddedBy != uniq {
+			continue
+		}
+		canDeleteSomething = true
+
+		// multi delete был бы эффективнее, но выполняем задание.
+		// можно было бы и нашим, и вашим, если опять же отправлять
+		// в горутину хоть небольшой, а список урлов
+		go app.deleteURL(c, shortURL.ID)
+	}
+
+	if canDeleteSomething {
+		c.String(http.StatusAccepted, "")
+		return
+	} else {
+		// намеренно не буду показывать ошибку. ишь чо удумал, чужие урлы удалять
+		c.String(http.StatusBadRequest, "")
+		return
+	}
 }
 
 func (app App) handlerPing(c *gin.Context) {

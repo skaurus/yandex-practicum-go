@@ -74,12 +74,20 @@ func (s fileStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) 
 	return s.memoryStorage.GetByID(ctx, id)
 }
 
+func (s fileStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs, error) {
+	return s.memoryStorage.GetByIDMulti(ctx, ids)
+}
+
 func (s fileStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
 	return s.memoryStorage.GetByURL(ctx, url)
 }
 
 func (s fileStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
 	return s.memoryStorage.GetAllUserUrls(ctx, by)
+}
+
+func (s fileStorage) DeleteByID(ctx context.Context, id int) error {
+	return s.memoryStorage.DeleteByID(ctx, id)
 }
 
 func (s fileStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {

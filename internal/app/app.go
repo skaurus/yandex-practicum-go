@@ -112,6 +112,7 @@ func SetupRouter(env env.Environment, store storage.Storage) *gin.Engine {
 	router.POST("/api/shorten", app.handlerAPIShorten)
 	router.POST("/api/shorten/batch", app.handlerAPIShortenBatch)
 	router.GET("/api/user/urls", app.handlerGetAllUserURLs)
+	router.DELETE("/api/user/urls", app.handlerDeleteURLs)
 	router.GET("/ping", app.handlerPing)
 
 	return router

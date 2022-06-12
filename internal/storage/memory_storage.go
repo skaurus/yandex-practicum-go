@@ -25,7 +25,7 @@ func NewMemoryStorage() memoryStorage {
 
 func (s memoryStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	*s.counter++
-	s.idToURLs[*s.counter] = shortenedURL{*s.counter, u, by}
+	s.idToURLs[*s.counter] = shortenedURL{*s.counter, u, by, false}
 	s.userToIDs[by] = append(s.userToIDs[by], *s.counter)
 	return *s.counter, nil
 }
@@ -46,6 +46,19 @@ func (s memoryStorage) GetByID(ctx context.Context, id int) (shortenedURL, error
 	answer, ok := s.idToURLs[id]
 	if !ok {
 		return shortenedURL{}, newError(errNotFound, nil)
+	}
+
+	return answer, nil
+}
+
+func (s memoryStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs, error) {
+	answer := make(shortenedURLs, 0, len(ids))
+	for _, id := range ids {
+		shortenedURL, err := s.GetByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		answer = append(answer, shortenedURL)
 	}
 
 	return answer, nil
@@ -79,6 +92,20 @@ func (s memoryStorage) GetAllUserUrls(ctx context.Context, by string) (shortened
 	}
 
 	return answer, nil
+}
+
+func (s memoryStorage) DeleteByID(ctx context.Context, id int) error {
+	delete(s.idToURLs, id)
+	for addedBy, ids := range s.userToIDs {
+		var filteredIDs []int
+		for _, v := range ids {
+			if v != id {
+				filteredIDs = append(filteredIDs, v)
+			}
+		}
+		s.userToIDs[addedBy] = filteredIDs
+	}
+	return nil
 }
 
 func (s memoryStorage) Close() error {
