@@ -179,7 +179,7 @@ func (app App) handlerRedirect(c *gin.Context) {
 		return
 	}
 
-	originalURL, err := app.storage.GetByID(c, id)
+	shortURL, err := app.storage.GetByID(c, id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			logger.Warn().Msgf("can't find id [%d]", id)
@@ -191,7 +191,7 @@ func (app App) handlerRedirect(c *gin.Context) {
 		return
 	}
 
-	c.Header("Location", originalURL)
+	c.Header("Location", shortURL.OriginalURL)
 	c.String(http.StatusTemporaryRedirect, "")
 }
 

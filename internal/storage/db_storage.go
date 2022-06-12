@@ -127,21 +127,25 @@ func (db dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatc
 	return &answer, nil
 }
 
-func (db dbStorage) GetByID(ctx context.Context, id int) (string, error) {
-	var originalURL string
+func (db dbStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
+	var originalURL, addedBy string
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
 		ctx,
-		"SELECT original_url FROM urls WHERE id = $1",
+		"SELECT original_url, added_by FROM urls WHERE id = $1",
 		id,
 	)
-	err := row.Scan(&originalURL)
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		err = newError(errNotFound, err)
+	err := row.Scan(&originalURL, &addedBy)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = newError(errNotFound, err)
+		}
+		return shortenedURL{}, nil
 	}
-	return originalURL, err
+
+	return shortenedURL{id, originalURL, addedBy}, nil
 }
 
 func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {

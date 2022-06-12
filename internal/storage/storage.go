@@ -9,14 +9,39 @@ import (
 	"github.com/skaurus/yandex-practicum-go/internal/env"
 )
 
+// shortenedURL - "строка" с данными; будем энкодить его в файле как JSON,
+// но сэкономим на повторении ключей: https://eagain.net/articles/go-json-array-to-struct/
+// будущее описание строки таблицы в базе данных, скорее всего
+type shortenedURL struct {
+	ID          int
+	OriginalURL string
+	AddedBy     string
+}
+type shortenedURLs []shortenedURL
+
 type Storage interface {
 	Store(context.Context, string, string) (int, error)
 	StoreBatch(context.Context, *StoreBatchRequest, string) (*StoreBatchResponse, error)
-	GetByID(context.Context, int) (string, error)
+	GetByID(context.Context, int) (shortenedURL, error)
 	GetByURL(context.Context, string) (shortenedURL, error)
 	GetAllUserUrls(context.Context, string) (shortenedURLs, error)
 	Close() error
 }
+
+// storeBatch* используются в "/api/shorten/batch" (handlers.handlerAPIShortenBatch)
+type storeBatchRequestRecord struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type StoreBatchRequest []storeBatchRequestRecord
+
+type storeBatchResponseRecord struct {
+	CorrelationID string
+	ID            int
+}
+
+type StoreBatchResponse []storeBatchResponseRecord
 
 const errNotFound = "not found"
 
@@ -40,31 +65,6 @@ func newError(errorText string, originalError error) error {
 }
 
 var ErrNotFound = newError(errNotFound, nil)
-
-// опишем тип "строки" с данными; будем энкодить его в файле как JSON,
-// но сэкономим на повторении ключей: https://eagain.net/articles/go-json-array-to-struct/
-// будущее описание строки таблицы в базе данных, скорее всего
-type shortenedURL struct {
-	ID          int
-	OriginalURL string
-	AddedBy     string
-}
-type shortenedURLs []shortenedURL
-
-// storeBatch* используются в "/api/shorten/batch" (handlers.handlerAPIShortenBatch)
-type storeBatchRequestRecord struct {
-	CorrelationID string `json:"correlation_id"`
-	OriginalURL   string `json:"original_url"`
-}
-
-type StoreBatchRequest []storeBatchRequestRecord
-
-type storeBatchResponseRecord struct {
-	CorrelationID string
-	ID            int
-}
-
-type StoreBatchResponse []storeBatchResponseRecord
 
 func (s shortenedURL) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`[%d,"%s","%s"]`, s.ID, s.OriginalURL, s.AddedBy)), nil
@@ -110,17 +110,13 @@ func (s *shortenedURL) UnmarshalJSON(buf []byte) error {
 
 // самонадеянно выглядит отсутствие error в ответе. возможна ли она тут и
 // что вообще ей считать - хороший вопрос, оставшийся за скобками
-func (s *memoryStorage) memoryToRows() *shortenedURLs {
+func (s memoryStorage) memoryToRows() *shortenedURLs {
 	// понятно, что скорее всего такой длины не хватит, но как стартовая точка...
 	rows := make(shortenedURLs, 0, len(s.userToIDs))
-	for user, ids := range s.userToIDs {
-		for _, id := range ids {
-			// жалко создавать переменную для OriginalURL - хотя тогда создание
-			// строки было бы более читаемо. может, зря жалко?
-			row := shortenedURL{id, s.idToURLs[id], user}
-			rows = append(rows, row)
-		}
+	for _, row := range s.idToURLs {
+		rows = append(rows, row)
 	}
+
 	return &rows
 }
 

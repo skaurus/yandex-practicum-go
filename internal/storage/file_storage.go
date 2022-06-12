@@ -57,7 +57,7 @@ To stop seeing this message and start - move that file somewhere
 		if row.ID > maxID {
 			maxID = row.ID
 		}
-		s.memoryStorage.idToURLs[row.ID] = row.OriginalURL
+		s.memoryStorage.idToURLs[row.ID] = row
 		s.memoryStorage.userToIDs[row.AddedBy] = append(s.memoryStorage.userToIDs[row.AddedBy], row.ID)
 	}
 	s.memoryStorage.counter = IntPtr(maxID)
@@ -70,7 +70,7 @@ func (s fileStorage) Store(ctx context.Context, u string, by string) (int, error
 	return s.memoryStorage.Store(ctx, u, by)
 }
 
-func (s fileStorage) GetByID(ctx context.Context, id int) (string, error) {
+func (s fileStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
 	return s.memoryStorage.GetByID(ctx, id)
 }
 

@@ -8,7 +8,7 @@ type memoryStorage struct {
 	// а оставалось общим (нужно в тестах, чтобы общий storage у двух разных router
 	// работал корректно)
 	counter   *int
-	idToURLs  map[int]string
+	idToURLs  map[int]shortenedURL
 	userToIDs map[string][]int
 }
 
@@ -20,12 +20,12 @@ func IntPtr(x int) *int {
 }
 
 func NewMemoryStorage() memoryStorage {
-	return memoryStorage{IntPtr(0), make(map[int]string), make(map[string][]int)}
+	return memoryStorage{IntPtr(0), make(map[int]shortenedURL), make(map[string][]int)}
 }
 
 func (s memoryStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	*s.counter++
-	s.idToURLs[*s.counter] = u
+	s.idToURLs[*s.counter] = shortenedURL{*s.counter, u, by}
 	s.userToIDs[by] = append(s.userToIDs[by], *s.counter)
 	return *s.counter, nil
 }
@@ -42,50 +42,25 @@ func (s memoryStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreB
 	return &answer, nil
 }
 
-func (s memoryStorage) GetByID(ctx context.Context, id int) (string, error) {
-	url, ok := s.idToURLs[id]
+func (s memoryStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
+	answer, ok := s.idToURLs[id]
 	if !ok {
-		return "", newError(errNotFound, nil)
+		return shortenedURL{}, newError(errNotFound, nil)
 	}
-	return url, nil
+
+	return answer, nil
 }
 
 func (s memoryStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
-	// текущая структура хранения максимально неудобна для этого метода;
-	// ну что делать, применим брутфорс и будем надеяться, что её будут
-	// вызывать только с dbStorage
-	found := false
-	var id int
-	var originalURL string
-	for id, originalURL = range s.idToURLs {
-		if originalURL == url {
-			found = true
-			break
+	// текущая структура хранения не очень удобна для этого метода;
+	// ну что делать, применим брутфорс
+	for _, storedURL := range s.idToURLs {
+		if storedURL.OriginalURL == url {
+			return storedURL, nil
 		}
-	}
-	if !found {
-		return shortenedURL{}, newError(errNotFound, nil)
 	}
 
-	found = false
-	var addedBy string
-	var ids []int
-	for addedBy, ids = range s.userToIDs {
-		for _, v := range ids {
-			if v == id {
-				found = true
-				break
-			}
-		}
-		if found {
-			break
-		}
-	}
-	if !found {
-		return shortenedURL{}, newError(errNotFound, nil)
-	}
-
-	return shortenedURL{id, originalURL, addedBy}, nil
+	return shortenedURL{}, newError(errNotFound, nil)
 }
 
 func (s memoryStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
@@ -94,17 +69,16 @@ func (s memoryStorage) GetAllUserUrls(ctx context.Context, by string) (shortened
 		return nil, ErrNotFound
 	}
 
-	var err error
 	answer := make(shortenedURLs, 0, len(ids))
 	for _, id := range ids {
-		originalURL, err := s.GetByID(ctx, id)
+		shortenedURL, err := s.GetByID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		answer = append(answer, shortenedURL{id, originalURL, by})
+		answer = append(answer, shortenedURL)
 	}
 
-	return answer, err
+	return answer, nil
 }
 
 func (s memoryStorage) Close() error {

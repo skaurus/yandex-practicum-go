@@ -27,12 +27,15 @@ func Test_memoryStorage_Store(t *testing.T) {
 	}{
 		{"can shorten url", args{YA, "skaurus"}, 1, memoryStorage{
 			IntPtr(1),
-			map[int]string{1: YA},
+			map[int]shortenedURL{1: {1, YA, "skaurus"}},
 			map[string][]int{"skaurus": {1}},
 		}},
 		{"can shorten new url", args{YA, "skaurus"}, 2, memoryStorage{
 			IntPtr(2),
-			map[int]string{1: YA, 2: YA},
+			map[int]shortenedURL{
+				1: {1, YA, "skaurus"},
+				2: {2, YA, "skaurus"},
+			},
 			map[string][]int{"skaurus": {1, 2}},
 		}},
 	}
@@ -54,18 +57,21 @@ func Test_memoryStorage_GetByID(t *testing.T) {
 	}
 	store := memoryStorage{
 		IntPtr(2),
-		map[int]string{1: YA, 2: Google},
+		map[int]shortenedURL{
+			1: {1, YA, "skaurus"},
+			2: {2, Google, "skaurus"},
+		},
 		map[string][]int{"skaurus": {1, 2}},
 	}
 	tests := []struct {
 		name string
 		args args
-		want string
+		want shortenedURL
 		err  error
 	}{
-		{"can unshorten url", args{1}, YA, nil},
-		{"can unshorten url", args{2}, Google, nil},
-		{"can't unshorten what is not there", args{3}, "", ErrNotFound},
+		{"can unshorten url", args{1}, shortenedURL{1, YA, "skaurus"}, nil},
+		{"can unshorten url", args{2}, shortenedURL{2, Google, "skaurus"}, nil},
+		{"can't unshorten what is not there", args{3}, shortenedURL{}, ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
