@@ -1,6 +1,9 @@
 package storage
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 type memoryStorage struct {
 	// Это странное решение - что counter это ссылка - нужно, чтобы при передаче
@@ -56,6 +59,10 @@ func (s memoryStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedUR
 	for _, id := range ids {
 		shortenedURL, err := s.GetByID(ctx, id)
 		if err != nil {
+			// если какой-то id не найден - это не повод прерывать всё
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
 			return nil, err
 		}
 		answer = append(answer, shortenedURL)
