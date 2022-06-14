@@ -52,7 +52,9 @@ func New() (Environment, error) {
 			return Environment{}, err
 		}
 		connConfig.Logger = zerologadapter.NewLogger(*env.Logger)
-		//connConfig.LogLevel = pgx.LogLevelError // можно использовать для дебага
+		// LogLevelInfo можно использовать для дебага; но не забывайте поменять
+		// и zerolog.SetGlobalLevel выше
+		connConfig.LogLevel = pgx.LogLevelError
 
 		ctx, cancel := context.WithTimeout(
 			context.Background(),
