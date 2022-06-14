@@ -70,7 +70,11 @@ func newError(errorText string, originalError error) error {
 var ErrNotFound = newError(errNotFound, nil)
 
 func (s shortenedURL) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`[%d,"%s","%s"]`, s.ID, s.OriginalURL, s.AddedBy)), nil
+	IsDeleted := "false"
+	if s.IsDeleted {
+		IsDeleted = "true"
+	}
+	return []byte(fmt.Sprintf(`[%d,"%s","%s",%s]`, s.ID, s.OriginalURL, s.AddedBy, IsDeleted)), nil
 }
 
 func (s shortenedURLs) MarshalJSON() ([]byte, error) {
@@ -100,7 +104,7 @@ func (s shortenedURLs) MarshalJSON() ([]byte, error) {
 }
 
 func (s *shortenedURL) UnmarshalJSON(buf []byte) error {
-	tmp := []interface{}{&s.ID, &s.OriginalURL, &s.AddedBy}
+	tmp := []interface{}{&s.ID, &s.OriginalURL, &s.AddedBy, &s.IsDeleted}
 	wantLen := len(tmp)
 	if err := json.Unmarshal(buf, &tmp); err != nil {
 		return err
