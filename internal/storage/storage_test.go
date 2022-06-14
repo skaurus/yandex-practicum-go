@@ -27,12 +27,12 @@ func Test_memoryStorage_Store(t *testing.T) {
 	}{
 		{"can shorten url", args{YA, "skaurus"}, 1, memoryStorage{
 			IntPtr(1),
-			map[int]shortenedURL{1: {1, YA, "skaurus", false}},
+			map[int]*shortenedURL{1: {1, YA, "skaurus", false}},
 			map[string][]int{"skaurus": {1}},
 		}},
 		{"can shorten new url", args{YA, "skaurus"}, 2, memoryStorage{
 			IntPtr(2),
-			map[int]shortenedURL{
+			map[int]*shortenedURL{
 				1: {1, YA, "skaurus", false},
 				2: {2, YA, "skaurus", false},
 			},
@@ -57,7 +57,7 @@ func Test_memoryStorage_GetByID(t *testing.T) {
 	}
 	store := memoryStorage{
 		IntPtr(2),
-		map[int]shortenedURL{
+		map[int]*shortenedURL{
 			1: {1, YA, "skaurus", false},
 			2: {2, Google, "skaurus", false},
 		},
@@ -81,7 +81,11 @@ func Test_memoryStorage_GetByID(t *testing.T) {
 			} else {
 				assert.ErrorIs(t, err, tt.err)
 			}
-			assert.Equal(t, tt.want, got)
+			if tt.want.ID > 0 {
+				assert.Equal(t, tt.want, *got)
+			} else {
+				assert.Assert(t, got == nil)
+			}
 		})
 	}
 }
