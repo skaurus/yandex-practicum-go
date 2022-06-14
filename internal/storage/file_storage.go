@@ -70,7 +70,7 @@ func (s fileStorage) Store(ctx context.Context, u string, by string) (int, error
 	return s.memoryStorage.Store(ctx, u, by)
 }
 
-func (s fileStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
+func (s fileStorage) GetByID(ctx context.Context, id int) (*shortenedURL, error) {
 	return s.memoryStorage.GetByID(ctx, id)
 }
 
@@ -78,7 +78,7 @@ func (s fileStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs
 	return s.memoryStorage.GetByIDMulti(ctx, ids)
 }
 
-func (s fileStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
+func (s fileStorage) GetByURL(ctx context.Context, url string) (*shortenedURL, error) {
 	return s.memoryStorage.GetByURL(ctx, url)
 }
 

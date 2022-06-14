@@ -8,7 +8,7 @@ type memoryStorage struct {
 	// а оставалось общим (нужно в тестах, чтобы общий storage у двух разных router
 	// работал корректно)
 	counter   *int
-	idToURLs  map[int]shortenedURL
+	idToURLs  map[int]*shortenedURL
 	userToIDs map[string][]int
 }
 
@@ -20,12 +20,12 @@ func IntPtr(x int) *int {
 }
 
 func NewMemoryStorage() memoryStorage {
-	return memoryStorage{IntPtr(0), make(map[int]shortenedURL), make(map[string][]int)}
+	return memoryStorage{IntPtr(0), make(map[int]*shortenedURL), make(map[string][]int)}
 }
 
 func (s memoryStorage) Store(ctx context.Context, u string, by string) (int, error) {
 	*s.counter++
-	s.idToURLs[*s.counter] = shortenedURL{*s.counter, u, by, false}
+	s.idToURLs[*s.counter] = &shortenedURL{*s.counter, u, by, false}
 	s.userToIDs[by] = append(s.userToIDs[by], *s.counter)
 	return *s.counter, nil
 }
@@ -42,10 +42,10 @@ func (s memoryStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreB
 	return &answer, nil
 }
 
-func (s memoryStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
+func (s memoryStorage) GetByID(ctx context.Context, id int) (*shortenedURL, error) {
 	answer, ok := s.idToURLs[id]
 	if !ok {
-		return shortenedURL{}, newError(errNotFound, nil)
+		return nil, newError(errNotFound, nil)
 	}
 
 	return answer, nil
@@ -64,7 +64,7 @@ func (s memoryStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedUR
 	return answer, nil
 }
 
-func (s memoryStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
+func (s memoryStorage) GetByURL(ctx context.Context, url string) (*shortenedURL, error) {
 	// текущая структура хранения не очень удобна для этого метода;
 	// ну что делать, применим брутфорс
 	for _, storedURL := range s.idToURLs {
@@ -73,7 +73,7 @@ func (s memoryStorage) GetByURL(ctx context.Context, url string) (shortenedURL, 
 		}
 	}
 
-	return shortenedURL{}, newError(errNotFound, nil)
+	return nil, newError(errNotFound, nil)
 }
 
 func (s memoryStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
@@ -95,16 +95,11 @@ func (s memoryStorage) GetAllUserUrls(ctx context.Context, by string) (shortened
 }
 
 func (s memoryStorage) DeleteByID(ctx context.Context, id int) error {
-	delete(s.idToURLs, id)
-	for addedBy, ids := range s.userToIDs {
-		var filteredIDs []int
-		for _, v := range ids {
-			if v != id {
-				filteredIDs = append(filteredIDs, v)
-			}
-		}
-		s.userToIDs[addedBy] = filteredIDs
+	shortURL, err := s.GetByID(ctx, id)
+	if err != nil {
+		return err
 	}
+	shortURL.IsDeleted = true
 	return nil
 }
 

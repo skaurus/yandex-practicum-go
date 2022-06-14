@@ -128,7 +128,7 @@ func (db dbStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatc
 	return &answer, nil
 }
 
-func (db dbStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
+func (db dbStorage) GetByID(ctx context.Context, id int) (*shortenedURL, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
@@ -145,10 +145,10 @@ func (db dbStorage) GetByID(ctx context.Context, id int) (shortenedURL, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = newError(errNotFound, err)
 		}
-		return shortenedURL{}, err
+		return nil, err
 	}
 
-	return shortenedURL{id, originalURL, addedBy, isDeleted}, nil
+	return &shortenedURL{id, originalURL, addedBy, isDeleted}, nil
 }
 
 func (db dbStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs, error) {
@@ -174,15 +174,15 @@ func (db dbStorage) GetByIDMulti(ctx context.Context, ids []int) (shortenedURLs,
 			if errors.Is(err, pgx.ErrNoRows) {
 				err = newError(errNotFound, err)
 			}
-			return nil, err
+			return answer, err
 		}
-		answer = append(answer, shortenedURL{id, originalURL, addedBy, isDeleted})
+		answer = append(answer, &shortenedURL{id, originalURL, addedBy, isDeleted})
 	}
 
 	return answer, nil
 }
 
-func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, error) {
+func (db dbStorage) GetByURL(ctx context.Context, url string) (*shortenedURL, error) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	row := db.handle.QueryRow(
@@ -199,10 +199,10 @@ func (db dbStorage) GetByURL(ctx context.Context, url string) (shortenedURL, err
 		err = newError(errNotFound, err)
 	}
 	if err != nil {
-		return shortenedURL{}, err
+		return nil, err
 	}
 
-	return shortenedURL{id, url, addedBy, false}, nil
+	return &shortenedURL{id, url, addedBy, false}, nil
 }
 
 func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURLs, error) {
@@ -229,7 +229,7 @@ func (db dbStorage) GetAllUserUrls(ctx context.Context, by string) (shortenedURL
 			}
 			return nil, err
 		}
-		answer = append(answer, shortenedURL{id, originalURL, by, false})
+		answer = append(answer, &shortenedURL{id, originalURL, by, false})
 	}
 
 	return answer, nil
