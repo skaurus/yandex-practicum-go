@@ -90,6 +90,10 @@ func (s fileStorage) DeleteByID(ctx context.Context, id int) error {
 	return s.memoryStorage.DeleteByID(ctx, id)
 }
 
+func (s fileStorage) DeleteByIDMulti(ctx context.Context, ids []int) error {
+	return s.memoryStorage.DeleteByIDMulti(ctx, ids)
+}
+
 func (s fileStorage) StoreBatch(ctx context.Context, storeBatchRequest *StoreBatchRequest, by string) (*StoreBatchResponse, error) {
 	return s.memoryStorage.StoreBatch(ctx, storeBatchRequest, by)
 }

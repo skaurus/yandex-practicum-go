@@ -256,6 +256,27 @@ func (db dbStorage) DeleteByID(ctx context.Context, id int) error {
 	return err
 }
 
+func (db dbStorage) DeleteByIDMulti(ctx context.Context, ids []int) error {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	rows, _ := db.handle.Query(
+		ctx,
+		"UPDATE urls SET is_deleted = true WHERE id = ANY($1)",
+		ids,
+	)
+	cancel()
+
+	rows.Close()
+	err := rows.Err()
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = newError(errNotFound, err)
+		}
+	}
+
+	return err
+}
+
 func (db dbStorage) Close() error {
 	return db.handle.Close(context.Background())
 }

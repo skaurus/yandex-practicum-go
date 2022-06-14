@@ -110,6 +110,17 @@ func (s memoryStorage) DeleteByID(ctx context.Context, id int) error {
 	return nil
 }
 
+func (s memoryStorage) DeleteByIDMulti(ctx context.Context, ids []int) error {
+	for _, id := range ids {
+		err := s.DeleteByID(ctx, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s memoryStorage) Close() error {
 	return nil
 }

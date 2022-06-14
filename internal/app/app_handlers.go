@@ -241,10 +241,10 @@ func (app App) handlerGetAllUserURLs(c *gin.Context) {
 	c.PureJSON(http.StatusOK, answer)
 }
 
-func (app App) deleteURL(c *gin.Context, id int) error {
-	err := app.storage.DeleteByID(c, id)
+func (app App) deleteURLs(c *gin.Context, ids []int) error {
+	err := app.storage.DeleteByIDMulti(c, ids)
 	if err != nil {
-		app.env.Logger.Error().Err(err).Msgf("can't delete url %d", id)
+		app.env.Logger.Error().Err(err).Msgf("can't delete urls %v", ids)
 	}
 	return err
 }
@@ -303,20 +303,20 @@ func (app App) handlerDeleteURLs(c *gin.Context) {
 		return
 	}
 
-	canDeleteSomething := false
+	idsToDelete := make([]int, 0, len(shortenedURLs))
 	for _, shortURL := range shortenedURLs {
 		if shortURL.AddedBy != uniq {
 			continue
 		}
-		canDeleteSomething = true
 
 		// multi delete был бы эффективнее, но выполняем задание.
 		// можно было бы и нашим, и вашим, если опять же отправлять
 		// в горутину хоть небольшой, а список урлов
-		go app.deleteURL(c, shortURL.ID)
+		idsToDelete = append(idsToDelete, shortURL.ID)
 	}
 
-	if canDeleteSomething {
+	if len(idsToDelete) > 0 {
+		go app.deleteURLs(c, idsToDelete)
 		c.String(http.StatusAccepted, "")
 		return
 	} else {

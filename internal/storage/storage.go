@@ -28,6 +28,7 @@ type Storage interface {
 	GetByURL(context.Context, string) (*shortenedURL, error)
 	GetAllUserUrls(context.Context, string) (shortenedURLs, error)
 	DeleteByID(context.Context, int) error
+	DeleteByIDMulti(context.Context, []int) error
 	Close() error
 }
 
