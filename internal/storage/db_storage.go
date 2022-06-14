@@ -27,7 +27,8 @@ func NewDBStorage(env env.Environment) (dbStorage, error) {
 CREATE TABLE IF NOT EXISTS urls (
 	id			 serial PRIMARY KEY,
 	original_url text NOT NULL,
-	added_by	 text NOT NULL
+	added_by	 text NOT NULL,
+	is_deleted   bool NOT NULL DEFAULT 'false'
 )`,
 	)
 	if err != nil {
