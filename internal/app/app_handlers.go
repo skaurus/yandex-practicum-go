@@ -253,7 +253,7 @@ func (app App) deleteURLs(ctx context.Context, ids []int) error {
 
 const (
 	deleteURLsBatchSize  = 10
-	deleteURLsTimeWindow = time.Duration(1e9 * 10)
+	deleteURLsTimeWindow = time.Duration(1e9 * 5)
 )
 
 var deleteURLCh chan int = make(chan int, deleteURLsBatchSize)
