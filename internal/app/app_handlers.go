@@ -256,7 +256,7 @@ const (
 	deleteURLsTimeWindow = time.Duration(1e9 * 10)
 )
 
-var deleteURLCh chan int = make(chan int, 5)
+var deleteURLCh chan int = make(chan int, deleteURLsBatchSize)
 
 // queueURLForDelete - добавляет айди урла в очередь на удаление.
 func queueURLForDelete(id int) {
