@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
 
@@ -241,12 +243,64 @@ func (app App) handlerGetAllUserURLs(c *gin.Context) {
 	c.PureJSON(http.StatusOK, answer)
 }
 
-func (app App) deleteURLs(c *gin.Context, ids []int) error {
-	err := app.storage.DeleteByIDMulti(c, ids)
+func (app App) deleteURLs(ctx context.Context, ids []int) error {
+	err := app.storage.DeleteByIDMulti(ctx, ids)
 	if err != nil {
 		app.env.Logger.Error().Err(err).Msgf("can't delete urls %v", ids)
 	}
 	return err
+}
+
+const (
+	deleteURLsBatchSize  = 10
+	deleteURLsTimeWindow = time.Duration(1e9 * 10)
+)
+
+var deleteURLCh chan int = make(chan int, 5)
+
+// queueURLForDelete - добавляет айди урла в очередь на удаление.
+func queueURLForDelete(id int) {
+	deleteURLCh <- id
+}
+
+// deleteQueuedURLs - удаляет урлы со всеми айдишниками, что накопились в
+// deleteCh, либо когда он заполнен, либо по таймеру. Таймер после этого
+// в любом случае запускается заново.
+func (app App) deleteQueuedURLs() {
+	var buffer []int
+	var ctx context.Context
+	var cancel context.CancelFunc
+	clearBuffer := func() {
+		buffer = make([]int, 0, deleteURLsBatchSize)
+	}
+	startTimer := func() {
+		ctx, cancel = context.WithTimeout(context.Background(), deleteURLsTimeWindow)
+	}
+	clearBuffer()
+	startTimer()
+	defer cancel() // I guess should never happen
+
+	for {
+		select {
+		case id := <-deleteURLCh:
+			buffer = append(buffer, id)
+			if len(buffer) >= deleteURLsBatchSize {
+				err := app.deleteURLs(context.Background(), buffer)
+				if err == nil {
+					clearBuffer()
+					startTimer()
+				}
+			}
+		case <-ctx.Done():
+			startTimer()
+			if len(buffer) > 0 {
+				err := app.deleteURLs(context.Background(), buffer)
+				if err == nil {
+					clearBuffer()
+				}
+			}
+		}
+	}
 }
 
 // handlerDeleteURLs - асинхронный хендлер; он принимает в теле запроса
@@ -303,17 +357,17 @@ func (app App) handlerDeleteURLs(c *gin.Context) {
 		return
 	}
 
-	idsToDelete := make([]int, 0, len(shortenedURLs))
+	hasSomethingToDelete := false
 	for _, shortURL := range shortenedURLs {
 		if shortURL.AddedBy != uniq {
 			continue
 		}
 
-		idsToDelete = append(idsToDelete, shortURL.ID)
+		queueURLForDelete(shortURL.ID)
+		hasSomethingToDelete = true
 	}
 
-	if len(idsToDelete) > 0 {
-		go app.deleteURLs(c, idsToDelete)
+	if hasSomethingToDelete {
 		c.String(http.StatusAccepted, "")
 		return
 	} else {
