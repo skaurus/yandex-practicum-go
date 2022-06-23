@@ -309,9 +309,6 @@ func (app App) handlerDeleteURLs(c *gin.Context) {
 			continue
 		}
 
-		// multi delete был бы эффективнее, но выполняем задание.
-		// можно было бы и нашим, и вашим, если опять же отправлять
-		// в горутину хоть небольшой, а список урлов
 		idsToDelete = append(idsToDelete, shortURL.ID)
 	}
 
