@@ -8,6 +8,7 @@ import (
 	"hash"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/skaurus/yandex-practicum-go/internal/env"
 	"github.com/skaurus/yandex-practicum-go/internal/storage"
@@ -18,8 +19,8 @@ import (
 
 const (
 	uniqCookieName   = "uniq"
-	uniqCookieMaxAge = 60 * 60 * 24 * 365     // seconds
-	cookieSecretKey  = "carrot-james-regular" // https://edoceo.com/dev/mnemonic-password-generator
+	uniqCookieMaxAge = time.Duration(1e9 * 60 * 60 * 24 * 365) // seconds
+	cookieSecretKey  = "carrot-james-regular"                  // https://edoceo.com/dev/mnemonic-password-generator
 )
 
 var hmacer hash.Hash
@@ -78,7 +79,7 @@ func (app App) middlewareSetCookies(c *gin.Context) {
 		sign := hmacer.Sum(nil)
 		cookieValue := fmt.Sprintf("%s-%s", uniq, hex.EncodeToString(sign))
 		c.SetCookie(
-			uniqCookieName, cookieValue, uniqCookieMaxAge, "/",
+			uniqCookieName, cookieValue, int(uniqCookieMaxAge.Seconds()), "/",
 			app.env.Config.CookieDomain, false, true,
 		)
 		logger.Info().Msg("set uniq cookie " + cookieValue)
