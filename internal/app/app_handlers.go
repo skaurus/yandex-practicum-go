@@ -290,7 +290,7 @@ func (app App) deleteQueuedURLs() {
 		case id := <-deleteURLCh:
 			buffer = append(buffer, id)
 			if len(buffer) >= deleteURLsBatchSize {
-				app.env.Logger.Info().Msg("batch >= 20")
+				app.env.Logger.Info().Msgf("batch >= %d", deleteURLsBatchSize)
 				err := app.deleteURLs(context.Background(), buffer)
 				if err == nil {
 					clearBuffer()
