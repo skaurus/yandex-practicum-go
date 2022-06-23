@@ -272,9 +272,14 @@ func (app App) deleteQueuedURLs() {
 	var cancel context.CancelFunc
 	clearBuffer := func() {
 		buffer = make([]int, 0, deleteURLsBatchSize)
+		app.env.Logger.Info().Msg("clearBuffer")
 	}
 	startTimer := func() {
+		if cancel != nil {
+			cancel()
+		}
 		ctx, cancel = context.WithTimeout(context.Background(), deleteURLsTimeWindow)
+		app.env.Logger.Info().Msg("startTimer")
 	}
 	clearBuffer()
 	startTimer()
@@ -285,6 +290,7 @@ func (app App) deleteQueuedURLs() {
 		case id := <-deleteURLCh:
 			buffer = append(buffer, id)
 			if len(buffer) >= deleteURLsBatchSize {
+				app.env.Logger.Info().Msg("batch >= 20")
 				err := app.deleteURLs(context.Background(), buffer)
 				if err == nil {
 					clearBuffer()
@@ -292,8 +298,10 @@ func (app App) deleteQueuedURLs() {
 				}
 			}
 		case <-ctx.Done():
+			app.env.Logger.Info().Msg("batch timeout")
 			startTimer()
 			if len(buffer) > 0 {
+				app.env.Logger.Info().Msg("batch > 0")
 				err := app.deleteURLs(context.Background(), buffer)
 				if err == nil {
 					clearBuffer()
